@@ -19,10 +19,25 @@ export async function runAttackChecks(config) {
       let response;
       try {
         response = await fetch(new URL(path, app), {
-          redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(10000),
+          redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(10000),
         });
       } catch {
         return { attackId, expected, observed: '확인 불가: 요청 실패 또는 시간 초과 (HTTP 응답 없음)' };
+      }
+      if (response.status >= 300 && response.status < 400) {
+        let vercelLogin = false;
+        try {
+          const destination = new URL(response.headers.get('location'), app);
+          vercelLogin = destination.origin === 'https://vercel.com'
+            && destination.pathname === '/sso-api';
+        } catch {
+          // Never record Location values, which can contain authentication data.
+        }
+        await response.body?.cancel();
+        return { attackId, expected,
+          observed: `확인 불가: HTTP ${response.status}, ${vercelLogin
+            ? 'Vercel 로그인 보호로 이동하여 앱 응답을 확인하지 못함'
+            : '리디렉션 응답 (이동 대상은 요청하지 않음)'}` };
       }
       let data;
       try {
