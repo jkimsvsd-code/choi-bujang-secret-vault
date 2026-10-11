@@ -8,19 +8,33 @@ export function deploymentIdentity(env, config) {
   const repo = env.VERCEL_GIT_REPO_SLUG;
   const commit = env.VERCEL_GIT_COMMIT_SHA;
   const host = env.VERCEL_URL;
-  if (env.VERCEL_GIT_PROVIDER !== 'github' || !OWNER.test(owner || '')
-      || !REPO.test(repo || '') || repo === '.' || repo === '..'
-      || repo.toLowerCase().endsWith('.git') || !SHA.test(commit || '')
-      || !HOST.test(host || '') || config?.step !== 1
-      || typeof config.judgeIssuer !== 'string'
-      || !/^https:\/\/[a-z0-9-]+\.up\.railway\.app\/defense\/judge$/iu.test(config.judgeIssuer)
-      || typeof config.sampleMarker !== 'string'
-      || !/^[A-Z0-9_]{1,80}$/u.test(config.sampleMarker)) {
-    throw new Error('배포 식별 정보를 확인할 수 없습니다. Vercel 시스템 환경변수와 1단계 시작 틀을 확인하세요.');
+
+  if (
+    env.VERCEL_GIT_PROVIDER !== 'github' ||
+    !OWNER.test(owner || '') ||
+    !REPO.test(repo || '') ||
+    repo === '.' ||
+    repo === '..' ||
+    repo.toLowerCase().endsWith('.git') ||
+    !SHA.test(commit || '') ||
+    !HOST.test(host || '') ||
+    !Number.isInteger(config?.step) ||
+    config.step < 2 ||
+    typeof config.judgeIssuer !== 'string' ||
+    !/^https:\/\/[a-z0-9-]+\.up\.railway\.app\/defense\/judge$/iu.test(
+      config.judgeIssuer,
+    ) ||
+    typeof config.sampleMarker !== 'string' ||
+    !/^[A-Z0-9_]{1,80}$/u.test(config.sampleMarker)
+  ) {
+    throw new Error(
+      '배포 식별 정보를 확인할 수 없습니다. Vercel 시스템 환경변수와 2단계 이상 설정을 확인하세요.',
+    );
   }
+
   return {
     schema: 'aleph.defense.deployment.v1',
-    step: 1,
+    step: config.step,
     repoUrl: `https://github.com/${owner.toLowerCase()}/${repo.toLowerCase()}`,
     commit: commit.toLowerCase(),
     publicAppUrl: `https://${host.toLowerCase()}`,
