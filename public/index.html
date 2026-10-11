@@ -28,10 +28,10 @@
 </head>
 <body>
   <main>
-    <div class="eyebrow">BYTE BACK · 1단계 피해 확인</div>
+    <div class="eyebrow">BYTE BACK · 로그인 자료실</div>
     <h1>점령된 자료실</h1>
-    <p>지금은 보호 장치가 없는 상태입니다. 아래 기록은 모두 실습을 위해 만든 가상 자료입니다.</p>
-    <div class="notice">로그인하지 않은 방문자도 자료를 볼 수 있습니다. 공개 범위를 확인하고, 다음 제작 단계에서 접근을 차례로 막아 주세요.</div>
+    <p>아래 기록은 모두 실습을 위해 만든 가상 자료입니다.</p>
+    <div class="notice">로그인한 뒤 자료를 볼 수 있습니다. 로그아웃하면 화면의 자료가 지워집니다.</div>
     <section class="auth-panel" aria-labelledby="auth-heading">
       <h2 id="auth-heading">자료실 로그인</h2>
       <p id="auth-status" role="status">로그인 상태 확인 중…</p>
@@ -45,7 +45,7 @@
       <button id="logout-button" type="button" hidden disabled>로그아웃</button>
       <p id="auth-error" role="alert" hidden></p>
     </section>
-    <ul id="notes" aria-live="polite"><li>가상 자료를 불러오는 중입니다.</li></ul>
+    <ul id="notes" aria-live="polite"><li>자료를 보려면 로그인해 주세요.</li></ul>
   </main>
   <script type="module">
     const projectUrl = 'https://olcjokkxxsdksvvgkxzx.supabase.co';
@@ -57,6 +57,47 @@
     const logout = document.querySelector('#logout-button');
     const status = document.querySelector('#auth-status');
     const errorBox = document.querySelector('#auth-error');
+    const list = document.querySelector('#notes');
+    let notesRequest;
+    let notesVersion = 0;
+    function notesMessage(message) {
+      const item = document.createElement('li');
+      item.textContent = message;
+      list.replaceChildren(item);
+    }
+    async function loadNotes(session) {
+      const version = ++notesVersion;
+      notesRequest?.abort();
+      notesMessage('자료를 보려면 로그인해 주세요.');
+      if (!session?.access_token) return;
+      const controller = new AbortController();
+      notesRequest = controller;
+      notesMessage('가상 자료를 불러오는 중입니다.');
+      try {
+        const response = await fetch('/api/notes', {
+          cache: 'no-store', redirect: 'error', signal: controller.signal,
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (version !== notesVersion) return;
+        if (response.status === 401) throw new Error('로그인 확인에 실패했습니다. 다시 로그인해 주세요.');
+        if (!response.ok) throw new Error('자료를 읽을 수 없습니다. 잠시 후 다시 시도해 주세요.');
+        const data = await response.json();
+        if (version !== notesVersion) return;
+        if (!Array.isArray(data.notes)) throw new Error('자료 형식이 맞지 않습니다.');
+        list.replaceChildren(...data.notes.map(note => {
+          const item = document.createElement('li');
+          const title = document.createElement('strong');
+          const content = document.createElement('span');
+          title.textContent = note.title;
+          content.textContent = note.content;
+          item.append(title, content);
+          return item;
+        }));
+      } catch (error) {
+        if (version !== notesVersion || controller.signal.aborted) return;
+        notesMessage(error.message);
+      }
+    }
     let client;
     let ready = false;
     let busy = false;
@@ -79,6 +120,7 @@
       logout.hidden = !signedIn;
       if (signedIn) form.reset();
       updateControls();
+      void loadNotes(session);
     }
     function authError(error) {
       const reasons = {
@@ -139,27 +181,6 @@
       showError('로그인 SDK를 시작하지 못했습니다. 네트워크 상태를 확인하고 새로고침해 주세요.');
     }
   </script>
-  <script type="module">
-    const list = document.querySelector('#notes');
-    try {
-      const response = await fetch('/api/notes', { cache: 'no-store' });
-      if (!response.ok) throw new Error('공개 자료를 읽을 수 없습니다.');
-      const data = await response.json();
-      if (!Array.isArray(data.notes)) throw new Error('자료 형식이 맞지 않습니다.');
-      list.replaceChildren(...data.notes.map(note => {
-        const item = document.createElement('li');
-        const title = document.createElement('strong');
-        const content = document.createElement('span');
-        title.textContent = note.title;
-        content.textContent = note.content;
-        item.append(title, content);
-        return item;
-      }));
-    } catch (error) {
-      const item = document.createElement('li');
-      item.textContent = error.message;
-      list.replaceChildren(item);
-    }
-  </script>
+
 </body>
 </html>

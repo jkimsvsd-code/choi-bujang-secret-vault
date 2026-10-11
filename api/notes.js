@@ -1,4 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
+import { createLoginVerifier } from '../src/verify-login.mjs';
+import config from '../aleph.config.json' with { type: 'json' };
+
+let verifyLogin;
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -9,6 +13,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const authorization = req.headers?.authorization;
+  if (typeof authorization !== 'string' || !authorization) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
   const supabaseUrl = process.env.SUPABASE_URL;
   const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -16,6 +25,17 @@ export default async function handler(req, res) {
     return res.status(500).json({
       error: 'Server configuration unavailable',
     });
+  }
+
+  let identity;
+  try {
+    verifyLogin ??= createLoginVerifier({ config, supabaseSecretKey: secretKey });
+    identity = await verifyLogin(authorization);
+  } catch {
+    return res.status(401).json({ error: 'Authentication failed' });
+  }
+  if (!identity) {
+    return res.status(401).json({ error: 'Authentication failed' });
   }
 
   try {
