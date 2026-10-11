@@ -17,7 +17,7 @@
 
 1. 사용자가 배포된 웹 화면에 접속합니다.
 2. 브라우저는 `/api/notes`를 요청합니다.
-3. Vercel 서버 함수는 서버 환경변수 `SUPABASE_URL`과 `SUPABASE_SECRET_KEY`를 사용해 Supabase의 `learning_notes` 테이블을 조회합니다.
+3. Vercel 서버 함수는 서버 환경변수 `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`를 사용해 Supabase의 `learning_notes` 테이블을 조회합니다.
 4. 조회 결과를 JSON으로 반환하고 화면에 메모 카드를 표시합니다.
 
 서버 전용 키는 브라우저 코드, API 응답 및 로그에 포함하지 않습니다.
@@ -55,7 +55,7 @@
 Vercel Production 환경에는 다음 환경변수가 필요합니다.
 
 - `SUPABASE_URL`
-- `SUPABASE_SECRET_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
 두 번째 변수에는 서버에서만 사용하는 Supabase 비밀 키를 설정합니다. 이 값은 코드, GitHub 저장소, 브라우저 파일, 응답 및 로그에 노출하지 않습니다.
 
