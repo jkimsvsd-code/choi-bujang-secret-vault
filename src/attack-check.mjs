@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (config.step !== 1 && config.step !== 2) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
+  if (![1, 2, 4].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try {
     app = new URL(config.publicAppUrl);
@@ -13,7 +13,7 @@ export async function runAttackChecks(config) {
     throw new Error('aleph.config.json의 실제 배포 주소를 먼저 넣어 주세요.');
   }
   if (typeof config.sampleMarker !== 'string' || !config.sampleMarker) throw new Error('가상 메모의 확인 표시를 넣어 주세요.');
-  if (config.step === 2) {
+  if (config.step === 2 || config.step === 4) {
     // Record only status and counts, never response bodies or raw network errors.
     const check = async (path, attackId, expected, inspect) => {
       let response;
@@ -47,7 +47,15 @@ export async function runAttackChecks(config) {
       }
       return { attackId, expected, observed: inspect(response, data) };
     };
-    const api = await check('/api/notes', 'anonymous_api_note_read',
+    const api = config.step === 4
+      ? await check('/api/notes', 'anonymous_api_note_read',
+        'GET /api/notes: 비로그인 HTTP 401, 메모 반환 없음',
+        (response, data) => {
+          const errorOnly = data && !Array.isArray(data)
+            && Object.keys(data).length === 1 && typeof data.error === 'string';
+          return `${response.status === 401 && errorOnly ? '기대와 일치' : '기대와 다름'}: HTTP ${response.status}, 오류 전용 응답 ${errorOnly ? '확인' : '미확인'}`;
+        })
+      : await check('/api/notes', 'anonymous_api_note_read',
       'GET /api/notes: HTTP 200, 가상 메모 확인 표시와 메모 4건',
       (response, data) => {
         const count = Array.isArray(data?.notes) ? data.notes.length : null;
@@ -64,6 +72,27 @@ export async function runAttackChecks(config) {
           || (response.status === 200 && count === 0);
         return `${valid ? '기대와 일치' : '기대와 다름'}: HTTP ${response.status}, 메모 ${count === null ? '배열 확인 불가' : count + '건'}`;
       });
+    if (config.step === 4) {
+      // No credentials are read or stored. Authenticated and write operations
+      // remain explicitly unexecuted until the student verifies them.
+      return [api, staticFile,
+        { attackId: 'owner_crud',
+          expected: 'A/B 각각 본인 목록·한 건 GET 200, POST 201, PUT 200, DELETE 204',
+          observed: '미실행: 실제 계정의 정상 CRUD는 사용자가 직접 검증 예정' },
+        { attackId: 'cross_owner_access',
+          expected: 'A/B 서로의 메모 GET·PUT·DELETE 404, 타인 자료 반환·변경 없음',
+          observed: '미실행: 실제 계정의 타인 메모 접근은 사용자가 직접 검증 예정' },
+        { attackId: 'owner_spoofing',
+          expected: 'URL·본문 owner_id를 무시하고 POST·PUT 소유자는 검증된 사용자 ID 유지',
+          observed: '미실행: 배포 환경 소유자 위조 검증은 사용자 수행 예정. 로컬 모의 테스트와 구분' },
+        { attackId: 'anonymous_other_methods',
+          expected: '비로그인 개별 GET 및 POST·PUT·DELETE는 HTTP 401',
+          observed: '미실행: 이 자기 점검은 목록 GET과 정적 파일 GET만 전송함' },
+        { attackId: 'database_rls',
+          expected: 'anon 권한 없음, authenticated CRUD 및 auth.uid() 소유자 제한',
+          observed: '미실행: SQL 적용과 DB 권한·RLS 검증은 사용자가 직접 수행 예정' },
+      ];
+    }
     return [api, staticFile];
   }
   const response = await fetch(new URL('/data.json', app), {
