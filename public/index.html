@@ -16,6 +16,14 @@
     li { border: 1px solid #51667c; border-radius: 14px; padding: 17px 19px; background: #1a2a3d; }
     strong { display: block; font-size: 18px; margin-bottom: 5px; }
     li span { color: #bfd0e5; }
+    .auth-panel { margin: 24px 0; padding: 20px; border: 1px solid #51667c; border-radius: 14px; background: #1a2a3d; }
+    .auth-panel h2 { margin-top: 0; }
+    .auth-panel label { display: block; margin: 14px 0 6px; }
+    .auth-panel input { box-sizing: border-box; width: 100%; padding: 12px; border: 1px solid #8296ad; border-radius: 6px; background: #101a28; color: #ecf4ff; font: inherit; }
+    .auth-panel button { margin-top: 16px; padding: 12px 20px; border: 0; border-radius: 6px; background: #8ad8df; color: #101a28; font: inherit; cursor: pointer; }
+    .auth-panel button:disabled { opacity: .55; cursor: wait; }
+    .auth-panel :focus-visible { outline: 3px solid #ffd580; outline-offset: 3px; }
+    #auth-error { color: #ffb8c5; }
   </style>
 </head>
 <body>
@@ -24,8 +32,113 @@
     <h1>점령된 자료실</h1>
     <p>지금은 보호 장치가 없는 상태입니다. 아래 기록은 모두 실습을 위해 만든 가상 자료입니다.</p>
     <div class="notice">로그인하지 않은 방문자도 자료를 볼 수 있습니다. 공개 범위를 확인하고, 다음 제작 단계에서 접근을 차례로 막아 주세요.</div>
+    <section class="auth-panel" aria-labelledby="auth-heading">
+      <h2 id="auth-heading">자료실 로그인</h2>
+      <p id="auth-status" role="status">로그인 상태 확인 중…</p>
+      <form id="login-form">
+        <label for="login-email">이메일</label>
+        <input id="login-email" name="email" type="email" autocomplete="username" required disabled>
+        <label for="login-password">비밀번호</label>
+        <input id="login-password" name="password" type="password" autocomplete="current-password" required disabled>
+        <button id="login-button" type="submit" disabled>로그인</button>
+      </form>
+      <button id="logout-button" type="button" hidden disabled>로그아웃</button>
+      <p id="auth-error" role="alert" hidden></p>
+    </section>
     <ul id="notes" aria-live="polite"><li>가상 자료를 불러오는 중입니다.</li></ul>
   </main>
+  <script type="module">
+    const projectUrl = 'https://olcjokkxxsdksvvgkxzx.supabase.co';
+    const publishableKey = 'sb_publishable_CynWMNLK_s_c_IdUWIAEhQ_sgHiubwr';
+    const form = document.querySelector('#login-form');
+    const email = document.querySelector('#login-email');
+    const password = document.querySelector('#login-password');
+    const login = document.querySelector('#login-button');
+    const logout = document.querySelector('#logout-button');
+    const status = document.querySelector('#auth-status');
+    const errorBox = document.querySelector('#auth-error');
+    let client;
+    let ready = false;
+    let busy = false;
+    let signedIn = false;
+
+    function showError(message = '') {
+      errorBox.textContent = message;
+      errorBox.hidden = !message;
+    }
+    function updateControls() {
+      email.disabled = password.disabled = login.disabled = logout.disabled = !ready || busy;
+      login.textContent = busy && !signedIn ? '로그인 중…' : '로그인';
+      logout.textContent = busy && signedIn ? '로그아웃 중…' : '로그아웃';
+      form.setAttribute('aria-busy', String(busy));
+    }
+    function renderSession(session) {
+      signedIn = Boolean(session?.user);
+      status.textContent = signedIn ? '로그인됨' : '로그아웃 상태';
+      form.hidden = signedIn;
+      logout.hidden = !signedIn;
+      if (signedIn) form.reset();
+      updateControls();
+    }
+    function authError(error) {
+      const reasons = {
+        invalid_credentials: '이메일 또는 비밀번호가 올바르지 않습니다.',
+        email_not_confirmed: '이메일 인증을 완료한 후 로그인해 주세요.',
+        user_banned: '로그인이 제한된 계정입니다.',
+        over_request_rate_limit: '요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+        email_provider_disabled: '이 프로젝트에서 이메일 로그인이 비활성화되어 있습니다.',
+      };
+      return reasons[error?.code] || error?.message || '연결에 실패했습니다. 네트워크 상태를 확인해 주세요.';
+    }
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!ready || busy) return;
+      busy = true;
+      showError();
+      updateControls();
+      try {
+        const { data, error } = await client.auth.signInWithPassword({
+          email: email.value.trim(), password: password.value,
+        });
+        if (error) throw error;
+        renderSession(data.session);
+      } catch (error) {
+        showError(`로그인 실패: ${authError(error)}`);
+      } finally {
+        password.value = '';
+        busy = false;
+        updateControls();
+      }
+    });
+    logout.addEventListener('click', async () => {
+      if (!ready || busy) return;
+      busy = true;
+      showError();
+      updateControls();
+      try {
+        const { error } = await client.auth.signOut({ scope: 'local' });
+        if (error) throw error;
+        renderSession(null);
+      } catch (error) {
+        showError(`로그아웃 실패: ${authError(error)}`);
+      } finally {
+        busy = false;
+        updateControls();
+      }
+    });
+    try {
+      const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm');
+      client = createClient(projectUrl, publishableKey);
+      client.auth.onAuthStateChange((_event, session) => {
+        ready = true;
+        renderSession(session);
+        showError();
+      });
+    } catch {
+      status.textContent = '로그인을 사용할 수 없습니다.';
+      showError('로그인 SDK를 시작하지 못했습니다. 네트워크 상태를 확인하고 새로고침해 주세요.');
+    }
+  </script>
   <script type="module">
     const list = document.querySelector('#notes');
     try {

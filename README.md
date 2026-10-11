@@ -132,11 +132,11 @@ npm.cmd run build -- --local
 - [x] 서버 API의 공개 접근 한계 문서화
 - [x] `X-Content-Type-Options: nosniff` 설정 추가
 - [x] 관련 JavaScript 문법 검사 및 `git diff --check` 통과
-- [ ] 실제 Vercel 배포 검증
-- [ ] 메모 4건 및 `/data.json` 응답 확인
-- [ ] `/aleph.json` 및 배포 응답 보안 헤더 확인
-- [ ] 가상 메모 문장의 현재 파일·저장소 검색 결과 기록
-- [ ] 심판 검증 결과 확인
-- [ ] Step 2 저장점 커밋 및 제출 묶음 검증
+- [x] 실제 Vercel 배포 검증
+- [x] 메모 4건 및 `/data.json` 응답 확인
+- [x] `/aleph.json` 및 배포 응답 보안 헤더 확인
+- [x] 가상 메모 문장의 현재 파일·저장소 검색 결과 기록
+- [x] 심판 검증 결과 확인
+- [x] Step 2 저장점 커밋 및 제출 묶음 검증
 
 진행 상태는 실제 검증 결과에 따라 갱신합니다.
