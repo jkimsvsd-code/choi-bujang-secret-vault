@@ -82,13 +82,16 @@ export default async function handler(req, res) {
       if (error) return res.status(500).json({ error: 'Notes could not be loaded' });
       return res.status(200).json(data.map(toNote));
     }
-    // Stage 3 intentionally checks authentication only for individual notes.
-    // Stage 4 must add owner checks to GET, PUT and DELETE below.
+    // Match the existing owner atomically; bind the updated owner to the
+    // verified identity too. Client-supplied ownership fields are ignored.
     let query;
-    if (req.method === 'PUT') query = table().update({ title: input.title, content: input.body });
+    if (req.method === 'PUT') query = table().update({
+      title: input.title, content: input.body, owner_id: identity.userId,
+    });
     else if (req.method === 'DELETE') query = table().delete();
     else query = table().select(columns);
-    query = query.eq('note_id', id).eq('sample_marker', 'SAMPLE_NOTE_1');
+    query = query.eq('note_id', id).eq('owner_id', identity.userId)
+      .eq('sample_marker', 'SAMPLE_NOTE_1');
     if (req.method !== 'GET') query = query.select(columns);
     const { data, error } = await query.maybeSingle();
     if (error) return res.status(500).json({ error: 'Note operation failed' });

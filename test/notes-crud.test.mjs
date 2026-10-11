@@ -40,7 +40,8 @@ function fixture() {
   const handler = vm.runInNewContext(source + '; handler', {
     randomUUID, config: {},
     process: { env: { SUPABASE_URL: 'https://fixture.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'fixture-only' } },
-    createLoginVerifier: () => async value => value === 'Bearer fixture-a' ? { userId: userA } : null,
+    createLoginVerifier: () => async value => value === 'Bearer fixture-a' ? { userId: userA }
+      : value === 'Bearer fixture-b' ? { userId: userB } : null,
     createClient: () => ({ from: table }),
   });
   async function request(method, { id, body, auth = 'Bearer fixture-a', query = {} } = {}) {
@@ -74,6 +75,45 @@ test('A CRUD, generated UUID, owner binding, list isolation and deleted GET 404'
   assert.equal((await request('GET', { id })).code, 404);
   assert.equal((await request('PUT', { id, body: { title: 'x', body: 'x' } })).code, 404);
   assert.equal((await request('DELETE', { id })).code, 404);
+});
+
+test('A and B cannot read, overwrite, transfer or delete each other\'s notes', async () => {
+  const { request, rows } = fixture();
+  for (const [auth, owner, other] of [
+    ['Bearer fixture-a', userA, userB], ['Bearer fixture-b', userB, userA],
+  ]) {
+    const created = await request('POST', {
+      auth, query: { owner_id: other },
+      body: { title: 'own', body: 'own', owner_id: other },
+    });
+    assert.equal(created.code, 201);
+    const id = created.body.id;
+    assert.equal(rows.get(id).owner_id, owner);
+    const foreignAuth = owner === userA ? 'Bearer fixture-b' : 'Bearer fixture-a';
+    const original = { ...rows.get(id) };
+    for (const method of ['GET', 'PUT', 'DELETE']) {
+      const denied = await request(method, {
+        id, auth: foreignAuth, query: { owner_id: owner, userId: owner },
+        body: { title: 'stolen', body: 'stolen', owner_id: other, role: 'admin' },
+      });
+      assert.equal(denied.code, 404);
+      assert.deepEqual(denied.body, { error: 'Note not found' });
+      assert.deepEqual(rows.get(id), original);
+    }
+    const updated = await request('PUT', {
+      id, auth, query: { owner_id: other },
+      body: { title: 'updated', body: 'updated', owner_id: other },
+    });
+    assert.equal(updated.code, 200);
+    assert.deepEqual(updated.body, { id, title: 'updated', body: 'updated' });
+    assert.equal(rows.get(id).owner_id, owner);
+    assert.deepEqual((await request('GET', { id, auth })).body, updated.body);
+    const list = await request('GET', { auth, query: { owner_id: other } });
+    assert.equal(list.code, 200);
+    assert(list.body.every(note => rows.get(note.id).owner_id === owner));
+    assert.equal((await request('DELETE', { id, auth })).code, 204);
+    assert.equal(rows.has(id), false);
+  }
 });
 
 test('all supported operations reject missing or invalid authentication before DB', async () => {
