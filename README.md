@@ -1,142 +1,173 @@
 # Choi Bujang Secret Vault
 
-알레프 방어전 실습 프로젝트입니다. Vercel, GitHub, Supabase를 이용해 가상 메모를 조회하는 웹 서비스를 구성하고, 공개 파일과 서버 API의 차이 및 자료 노출 위험을 점검합니다.
+Vercel, GitHub, Supabase로 가상 메모 자료실을 만들고 단계별로 접근 통제를 추가하는 알레프 방어전 실습 프로젝트입니다. 실제 개인정보나 민감한 자료는 사용하지 않습니다.
 
-## 1. 프로젝트 개요
+**현재 진행: 3단계 「진짜 로그인을 붙입니다」 — 로그인 화면과 자료 API 토큰 검증 구현, 배포 통합 검증 진행 중.**
 
-- **웹 화면:** HTML, CSS, JavaScript
-- **배포:** Vercel
-- **저장소:** GitHub
-- **데이터베이스:** Supabase
-- **메모 조회:** Vercel 서버 함수 `/api/notes`
-- **현재 단계:** Step 2 — 서버 API를 통한 메모 조회
+기록 기준: 2026-10-11. 최신 구현 커밋은 `f4c628f` (`Connect materials API to verified login sessions`)입니다. 구현, 사용자 확인, 로컬 모의 검증, 실제 배포 및 심판 판정을 구분합니다.
 
-실제 개인정보나 민감한 자료가 아닌 실습용 가상 메모만 사용합니다.
+## 1. 1~3단계 진행 기록
+
+| 단계 | 구현 및 변경 | 확인 상태 |
+|---|---|---|
+| 1단계: 공개 자료 노출 확인 | 로그인 없이 공개 가상 메모를 확인하는 자료실 구성 | 이후 단계에서도 가상 자료를 보존하며 접근 방식 변경 |
+| 2단계: 서버 API로 자료 조회 | 화면이 `/api/notes`를 호출하고 서버가 Supabase `learning_notes` 조회. `public/data.json` 제거 및 빌드의 정적 메모 복사 제거 | 기존 README에 2단계 완료 기록이 있음. 아래 역사 기록 참고 |
+| 3단계: 진짜 로그인 | Supabase Auth 이메일·비밀번호 로그인/로그아웃, 기존 검증 도우미로 API 토큰 검사, 세션 토큰을 포함한 자료 요청 | 코드·로컬 검증 완료. 사용자 로그인 성공 보고. 로그인 후 자료 조회는 Preview 환경변수 오류로 검증 미완료 |
+
+### 기존 2단계 완료 기록
+
+이전 README에는 Vercel 배포, 메모 4건과 `/data.json`, `/aleph.json`과 보안 헤더, 현재 파일·저장소의 가상 메모 검색, 심판 결과, 저장점 커밋·제출 묶음 검증이 모두 완료로 표시되어 있었습니다. 이를 당시의 기록으로 보존합니다. 이번 문서 갱신에서는 해당 결과를 재실행하거나 원본 판정 자료와 대조하지 않았으며, 이 기록을 3단계 통과 근거로 사용하지 않습니다.
+
+### 3단계 구현 내용
+
+- 공식 Supabase JavaScript SDK의 `signInWithPassword`, `signOut`, `onAuthStateChange`로 로그인·로그아웃·세션 복원 처리.
+- 로그인 성공 시 `로그인됨`과 로그아웃 버튼 표시. 실패 시 화면에 이유 표시. 회원가입 화면은 없음.
+- 브라우저가 SDK 세션의 access token을 `Authorization: Bearer …` 헤더로 자료 API에 전달.
+- `/api/notes`가 기존 `src/verify-login.mjs`의 `createLoginVerifier`를 호출. 도우미는 수정하지 않음.
+- 토큰이 없으면 401, 검증 실패 시 401로 자료 없이 거부. 브라우저가 보낸 `userId`·`role`로 권한을 판단하지 않음.
+- 서버 환경변수가 누락되면 토큰 검증 전 500으로 중단하며 자료는 반환하지 않음.
+- 검증을 통과한 요청만 DB 조회. 로그인 사용자별 메모 소유권 구분은 아직 구현하지 않음.
+- 로그아웃 시 화면 자료 제거, 진행 중 요청 취소, 이전 세션의 늦은 응답 표시 방지.
 
 ## 2. 현재 동작 구조
 
-1. 사용자가 배포된 웹 화면에 접속합니다.
-2. 브라우저는 `/api/notes`를 요청합니다.
-3. Vercel 서버 함수는 서버 환경변수 `SUPABASE_URL`과 `SUPABASE_SERVICE_ROLE_KEY`를 사용해 Supabase의 `learning_notes` 테이블을 조회합니다.
-4. 조회 결과를 JSON으로 반환하고 화면에 메모 카드를 표시합니다.
+1. 브라우저가 `public/index.html`을 열고 Supabase Auth 세션을 확인합니다.
+2. 로그인 전에는 자료 요청 없이 로그인 안내를 표시합니다.
+3. 사용자가 프로젝트에 등록된 테스트 계정으로 로그인합니다. 비밀번호와 JWT 생성·검증 흐름은 공식 SDK와 기존 서버 도우미가 처리합니다.
+4. 브라우저가 세션 토큰을 포함해 `/api/notes`를 요청합니다.
+5. 서버가 요청 토큰을 검증한 뒤 서버 환경변수로 Supabase에 연결합니다.
+6. `learning_notes`에서 가상 메모 표시가 일치하는 행의 제목·내용을 조회해 반환합니다.
+7. 화면은 반환 자료를 텍스트로 표시하며, 로그아웃하면 지웁니다.
 
-서버 전용 키는 브라우저 코드, API 응답 및 로그에 포함하지 않습니다.
+서버용 키는 브라우저 코드·응답·로그에 포함하지 않습니다. 브라우저의 Project URL과 publishable key는 공개 연결 설정이며 사용자 계정을 대신하지 않습니다.
 
-## 3. 주요 파일
+## 3. 폴더와 주요 파일
 
 | 경로 | 역할 |
 |---|---|
-| `public/index.html` | 메모 카드를 표시하는 웹 화면 |
-| `api/notes.js` | Supabase 메모 조회 서버 함수 |
-| `aleph.config.json` | 단계 및 심판 관련 설정 |
-| `scripts/build-public.mjs` | 배포용 식별 정보 생성 |
-| `scripts/deployment-identity.mjs` | 배포 환경 정보 검증 |
-| `vercel.json` | 빌드, 출력 폴더 및 보안 헤더 설정 |
-| `README.md` | 프로젝트 구성, 점검 절차 및 보안 한계 |
+| `public/index.html` | 로그인·로그아웃 화면, 세션 상태와 자료 표시 |
+| `api/notes.js` | 요청 토큰 검증 후 Supabase 자료 조회 |
+| `src/verify-login.mjs` | 제공된 로그인 검증 도우미 |
+| `src/attack-check.mjs` | 제출 묶음에 넣는 실제 요청 자기 점검. 현재 1·2단계만 지원 |
+| `src/decider.mjs`, `src/detect.mjs` | 이후 단계의 정책·탐지 실습 틀 |
+| `aleph.config.json` | 단계, 배포 주소, 로그인 발급자, 심판 설정 |
+| `scripts/build-public.mjs`, `scripts/deployment-identity.mjs` | 배포 식별 정보 생성·검증 |
+| `scripts/bundle.mjs` | 커밋·설정·자가 점검을 검사하고 제출 JSON 생성 |
+| `supabase/step2_learning_notes.sql` | 2단계 학습 DB 관련 SQL |
+| `docs/`, `test/`, `package/`, `xdr/` | 계약 문서, 테스트, 실습 자료 |
+| `vercel.json` | 빌드 명령, 공개 폴더, `nosniff` 헤더 설정 |
 
-## 4. 정적 공개 파일과 API
+공개 출력 폴더는 `public/`입니다. 루트의 기존 `data.json`은 보존되지만 빌드가 이를 `public/`에 복사하지 않습니다. 과거 Git 커밋·배포의 공개 자료까지 삭제되었다는 의미는 아닙니다.
 
-현재 메모 데이터는 `public/data.json`에 복사하지 않습니다. 화면은 `/api/notes`를 통해 메모를 조회합니다.
+## 4. 설정과 아직 맞춰야 할 항목
 
-`/data.json`은 메모가 포함되지 않은 404 응답 또는 빈 메모 상태여야 합니다. 실제 배포 응답은 별도로 확인해야 합니다.
+### 서버 환경변수
 
-배포 식별 정보는 빌드 과정에서 `public/aleph.json`에 생성됩니다. 이 파일은 저장소와 배포를 확인하기 위한 정보이며, 그 자체로 심판 성공을 증명하지는 않습니다.
+| 이름 | 값의 출처 | 사용 위치 |
+|---|---|---|
+| `SUPABASE_URL` | 같은 Supabase 프로젝트의 Connect → Project URL | Vercel 서버 함수 |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Settings → API Keys의 서버용 service_role 키 | Vercel 서버 함수 전용 |
 
-## 5. 보안상 한계
+Vercel 프로젝트의 Settings → Environment Variables에서 **각 변수의 적용 환경**을 확인합니다. 같은 프로젝트라도 Production과 Preview 적용 범위는 구분됩니다. 기존 변수에 Preview가 포함되어 있다면 중복 생성할 필요가 없습니다. 특정 브랜치 제한·덮어쓰기와 정확한 변수 이름도 확인합니다.
 
-### 공개 API 접근
+환경변수 변경은 기존 배포에 소급 적용되지 않습니다. 변경 후 해당 환경으로 재배포하고 **새 배포의 Visit**에서 확인합니다. 값은 공식 비밀 입력란에 직접 입력하며 README, 코드, 채팅, Git, 제출 묶음에 복사하지 않습니다.
 
-현재 `/api/notes`에는 사용자 인증 및 접근 권한 검사가 없습니다. 따라서 누구나 API를 직접 호출해 반환되는 실습용 메모를 조회할 수 있습니다.
+### 로그인 발급자와 단계 설정
 
-서버 전용 키를 사용한다는 사실만으로 공개 API 자체가 보호되는 것은 아닙니다. 실제 개인정보나 민감한 자료를 넣기 전에는 인증·인가 정책과 요청 제한을 추가해야 합니다.
+`aleph.config.json`의 `identityProvider`에는 다음 공개 정보가 기록되어 있습니다.
 
-### 서버 전용 환경변수
+- `issuer`: 화면에서 사용하는 Supabase 프로젝트 URL의 `/auth/v1`
+- `audience`: `authenticated`
+- `jwksUrl`: issuer 뒤에 `/.well-known/jwks.json`을 붙인 공개키 주소
 
-Vercel Production 환경에는 다음 환경변수가 필요합니다.
+현재 구현과 설정 사이에는 다음 미완료 항목이 있습니다.
 
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `step`은 아직 **2**입니다. 3단계 완료·제출로 표시할 상태가 아닙니다.
+- `allowedRoutes`는 빈 배열입니다. 3단계 제출 전 실제 허용 API 경로와 맞춰야 합니다.
+- `publicAppUrl`은 이전 개별 배포 주소입니다. 최종 검증할 배포 주소와의 정합성 확인이 필요합니다.
+- `src/attack-check.mjs`는 아직 2단계의 비로그인 API 200을 기대합니다. 현재 3단계 API의 비로그인 401 정책과 다르므로 3단계 자기 점검으로 사용할 수 없습니다.
+- `originalApiUrl`은 null이며, 원본 API 주소 설정은 5단계부터의 항목입니다.
+- `judgeIssuer`는 운영 측이 정한 값입니다. 학생 로그인 발급자와 구분하며 임의로 변경하지 않습니다.
 
-두 번째 변수에는 서버에서만 사용하는 Supabase 비밀 키를 설정합니다. 이 값은 코드, GitHub 저장소, 브라우저 파일, 응답 및 로그에 노출하지 않습니다.
+이번 README 갱신은 위 설정이나 소스 코드를 변경하지 않습니다.
 
-### 과거 노출 가능성
+## 5. 다시 실행하기
 
-현재 공개 파일을 삭제하거나 최신 커밋을 수정하더라도 과거 GitHub 커밋이나 이전 배포에 메모가 남아 있을 수 있습니다.
-
-따라서 현재 파일이 정리되었다는 사실만으로 과거 노출이 해결되었다고 판단하지 않습니다. 이전 공개 이력과 배포는 별도로 확인해야 합니다.
-
-## 6. 검증 절차
-
-아래 결과는 실제로 확인한 뒤 기록합니다. 확인하지 않은 항목은 성공으로 표시하지 않습니다.
-
-### 로컬 코드 및 빌드 검증
-
-PowerShell에서 프로젝트 폴더로 이동한 뒤 실행합니다.
+Node.js 22 이상과 npm이 필요합니다. PowerShell에서 프로젝트 폴더로 이동한 뒤 최초 의존성 설치를 실행합니다.
 
 ```powershell
-node --check .\api\notes.js
-node --check .\scripts\build-public.mjs
-node --check .\scripts\deployment-identity.mjs
-node -e "JSON.parse(require('fs').readFileSync('vercel.json', 'utf8')); console.log('vercel.json JSON OK')"
+npm.cmd ci
+```
+
+로컬 빌드 확인:
+
+```powershell
 npm.cmd run build -- --local
 ```
 
-`--local` 빌드는 로컬 화면과 빌드 흐름을 확인하기 위한 것입니다. 실제 Vercel 배포나 심판 접수를 증명하지 않습니다.
+서버 파일 문법 확인:
 
-### 현재 파일 및 GitHub 최신 파일 검색
+```powershell
+node --check api/notes.js
+```
 
-배포 파일과 GitHub 최신 커밋에서 실습용 메모 문장을 검색합니다. 검색할 문장은 실제 데이터에 저장된 가상 메모의 제목과 본문을 기준으로 선정합니다.
+로그인 화면만 로컬에서 열려면 Python이 설치된 환경에서 다음 명령을 실행하고 `http://localhost:8000`에 접속합니다.
 
-검색 결과에는 다음을 구분해 기록합니다.
+```powershell
+python -m http.server 8000 --directory public
+```
 
-- 검색 대상과 확인 시점
-- 일치하는 문장이 발견되었는지
-- 검색 결과가 없었다면 어떤 파일과 경로를 확인했는지
-- 과거 커밋이나 이전 배포는 별도로 남아 있는지
+이 정적 서버는 Vercel 서버 함수 `/api/notes`를 실행하지 않습니다. 로그인부터 자료 조회까지의 통합 검증은 Preview에서 진행합니다. `--local` 빌드는 실제 배포·환경변수·심판 통과를 증명하지 않습니다.
 
-검색 결과가 없다는 사실만으로 과거 노출이 해결되었다고 단정하지 않습니다.
+## 6. Preview 점검 절차와 기대 결과
 
-### 배포 URL 점검
+1. Preview 범위의 서버 환경변수를 확인합니다.
+2. Production과 분리된 브랜치로 Preview를 배포하고 Deployments → 해당 Preview → Visit을 엽니다.
+3. 같은 Supabase 프로젝트의 Authentication → Users에 준비된 A 테스트 계정으로 로그인합니다. 계정 비밀번호는 화면에 직접 입력합니다.
+4. 아래 정상·거부 결과를 각각 확인하고 배포·커밋과 함께 기록합니다.
 
-실제 배포가 끝난 뒤 다음 항목을 확인합니다.
-
-| 점검 대상 | 기대 결과 |
+| 점검 | 기대 결과 |
 |---|---|
-| `/` | 웹 화면이 정상적으로 열림 |
-| `/api/notes` | 가상 메모 4건 반환 |
-| `/data.json` | 404 또는 메모 0건 |
-| `/aleph.json` | 배포 식별 JSON 확인 가능 |
-| 첫 화면 응답 헤더 | `X-Content-Type-Options: nosniff` 확인 |
+| 자료실 비로그인 상태 | 메모 없이 로그인 안내 표시 |
+| 토큰 없는 `/api/notes` 요청 | 401, 메모 없음 |
+| 잘못되거나 만료된 토큰 요청 | 서버 설정이 정상일 때 401, 메모 없음 |
+| `userId`·`role`만 보낸 요청 | 인증 근거로 사용하지 않고 거부 |
+| 정상 A 로그인 | `로그인됨`, API 200, 가상 메모 4건 표시 |
+| 잘못된 비밀번호 | 로그인 실패 이유 표시 |
+| 로그아웃 | 입력 폼 복귀, 표시한 메모 제거 |
+| 로그아웃 뒤 이전 요청 도착 | 이전 자료가 다시 나타나지 않음 |
+| `/data.json` | 404 또는 빈 메모 배열 |
+| `/aleph.json` | 해당 배포 식별 정보 확인. 현재 설정상 단계는 2 |
+| 첫 화면 응답 헤더 | `X-Content-Type-Options: nosniff` |
 
-실제 응답과 기대 결과가 다르면 차이를 기록하고 원인을 확인합니다.
+Preview의 Vercel 로그인 보호와 자료실의 Supabase 로그인은 별개입니다. Vercel이 `/sso-api`로 302를 반환하면 앱에 도달하지 않은 것이므로 자료 API 성공·실패로 판정하지 않습니다. Preview 접근 권한을 확보한 뒤 자료실에서는 로그아웃 상태와 로그인 상태를 나눠 확인합니다.
 
-### 심판 검증
+## 7. 지금까지 확인한 결과와 남은 문제
 
-심판 결과는 실제 심판 요청 및 응답을 확인한 뒤 기록합니다. 코드 검사, 로컬 빌드 또는 `aleph.json`의 존재만으로 방어 성공을 주장하지 않습니다.
+| 항목 | 결과·근거 |
+|---|---|
+| JavaScript 문법·로컬 빌드·변경 검사 | 앞선 구현 작업에서 통과 |
+| 로그인·로그아웃·실패·세션 복원 | 모의 SDK 응답으로 검증 |
+| API 인증 전 DB 접근 차단, 위조 필드 무시 | 로컬 모의 검증 통과 |
+| 실제 도우미의 잘못된 인증 형식 거부 | 로컬 검증 통과. 도우미 파일 미수정 확인 |
+| 정상 인증 결과 후 자료 표시, 로그아웃 응답 경합 | 모의 검증 통과. 실제 A 계정의 배포 통합 검증과 구분 |
+| Supabase 공개 Auth 설정 | HTTP 200, 이메일 로그인 활성 확인 |
+| Preview의 실제 로그인 | 사용자가 `로그인됨` 표시 확인을 보고 |
+| Preview의 실제 자료 조회 | 사용자가 `Server configuration unavailable` 응답을 보고. 해결 후 성공 결과는 아직 미확인 |
+| 외부에서 Preview 접근 | Vercel 로그인 보호 302를 확인. 앱 상태 직접 검증 불가 |
+| 3단계 심판·제출 묶음 | 완료 미확인 |
 
-## 7. 변경 및 제출 원칙
+`Server configuration unavailable`은 실행 중인 API가 `SUPABASE_URL` 또는 `SUPABASE_SERVICE_ROLE_KEY`를 없거나 빈 값으로 읽었을 때 반환합니다. 어느 변수가 누락됐는지는 이 응답만으로 알 수 없습니다. 브라우저 로그인은 별도 공개 설정을 사용하므로 서버 설정 오류와 동시에 성공할 수 있습니다.
 
-- 한 번에 하나의 작업 단위만 변경합니다.
-- 기존 기능과 무관한 변경은 피합니다.
-- 비밀번호, 토큰, 서버 전용 키 및 실제 개인정보를 코드·커밋·제출 묶음에 포함하지 않습니다.
-- `judgeIssuer` 설정은 임의로 변경하지 않습니다.
-- `bundle-notes.json`과 `artifacts/submission.json`은 Git 커밋에 포함하지 않습니다.
-- 제출 묶음은 `npm run bundle` 실행 후 실제 결과를 확인합니다.
+사용자는 프로젝트 환경변수가 설정되어 있다고 보고했습니다. 남은 확인은 변수의 정확한 이름, Preview·브랜치 적용 범위, 설정 변경 뒤 생성된 새 배포인지 여부입니다. 아직 원격 설정이나 재배포 성공을 직접 확인하지 않았습니다.
 
-## 8. 진행 상태
+## 8. 제출 및 보존 원칙
 
-- [x] 화면에서 `/api/notes`를 호출하도록 수정
-- [x] 정적 `public/data.json` 제거
-- [x] 빌드 스크립트에서 정적 메모 JSON 복사 제거
-- [x] `step`을 2로 변경
-- [x] 서버 API의 공개 접근 한계 문서화
-- [x] `X-Content-Type-Options: nosniff` 설정 추가
-- [x] 관련 JavaScript 문법 검사 및 `git diff --check` 통과
-- [x] 실제 Vercel 배포 검증
-- [x] 메모 4건 및 `/data.json` 응답 확인
-- [x] `/aleph.json` 및 배포 응답 보안 헤더 확인
-- [x] 가상 메모 문장의 현재 파일·저장소 검색 결과 기록
-- [x] 심판 검증 결과 확인
-- [x] Step 2 저장점 커밋 및 제출 묶음 검증
+- 이번 단계와 무관한 파일, 공개 가능한 가상 자료, 학습 DB를 보존합니다.
+- 비밀번호·토큰·개인키·서버 전용 키·실제 개인정보·메모 본문을 제출 묶음에 넣지 않습니다.
+- `bundle-notes.json`과 `artifacts/submission.json`은 Git 커밋에서 제외합니다.
+- `npm.cmd run bundle`은 커밋된 설정과 깨끗한 작업 트리를 요구합니다. 현재 3단계 설정·자기 점검 정합성 작업이 남아 있습니다.
+- `npm run bundle`의 자기 점검과 `npm run decider:test`·`npm run detect:test`의 가상 연습은 실제 심판 판정이 아닙니다.
+- 실제로 확인하지 않은 배포·시험·심판 결과는 완료로 기록하지 않습니다.
 
-진행 상태는 실제 검증 결과에 따라 갱신합니다.
+참고: [Vercel 환경변수](https://vercel.com/docs/environment-variables), [Vercel 배포 환경](https://vercel.com/docs/deployments/environments), [Supabase Auth 사용자](https://supabase.com/docs/guides/auth/users).
