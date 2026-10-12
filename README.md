@@ -2,7 +2,20 @@
 
 Vercel, GitHub, Supabase로 가상 메모 자료실을 만들고 단계별로 접근 통제를 추가하는 알레프 방어전 실습 프로젝트입니다. 실제 개인정보나 민감한 자료는 사용하지 않습니다.
 
-**현재 진행: 4단계 「로그인해도 내 자료만 보이게 합니다」 — API 소유자 검사 구현·모의 검증 완료, 학습 데이터 및 RLS SQL 준비. 실제 DB 적용·검증은 사용자가 진행하며 결과 확인 대기.**
+**현재 진행: 5단계 「자료 요청을 서버 한곳으로 모읍니다」 — 서버 CRUD 확인, 직접 권한 회수 SQL 준비. 실제 학습 DB 적용·검증은 사용자 실행 대기.**
+
+## 5단계 저장점 (2026-10-12)
+
+- 직전 저장점은 `fa364d9`(4단계 저장점)입니다. 아래 1~4단계 설명과 검증 결과는 당시 기록으로 보존합니다. 아래의 “이번 저장점” 표현도 4단계 당시를 뜻하며, 현재 상태는 이 절을 우선합니다.
+- 브라우저 메모 읽기·추가·수정·삭제는 서버 `/api/notes`와 `/api/notes/:id`를 호출합니다. Supabase 직접 호출은 Auth에 사용합니다. 서버의 로그인 검증·소유자 조건·서버 전용 환경변수는 유지했습니다.
+- `supabase/step5_notes_server_only.sql`은 `public.learning_notes`의 PUBLIC·anon·authenticated 권한만 회수합니다. 전후 테이블·컬럼·상속 권한을 확인하며, 직접 권한이 남거나 service_role CRUD 권한이 없으면 취소합니다. 데이터와 RLS 정책은 유지합니다. 실제 실행은 하지 않았습니다.
+- 검토 후 Supabase → SQL Editor → New query → SQL 전체 붙여 넣기 → Run. 적용 후 anon/authenticated 권한은 false, service_role CRUD는 true여야 합니다. 4단계 RLS SQL 재실행은 authenticated 권한을 다시 부여합니다.
+- 정상 기대 결과: A 로그인 후 본인 CRUD 성공. 거부 기대 결과: 원본 API의 anon/authenticated 직접 읽기·쓰기 거부, 서버 무인증 401, 타인 메모 접근 404. 실제 A/B·DB 검증은 미실행입니다.
+- 재실행: `node --test test/notes-crud.test.mjs` (모의 테스트 4개 통과), `npm.cmd run build -- --local` (로컬 빌드), 커밋 후 `npm.cmd run bundle` (제출 JSON 생성). 화면 검증은 Vercel Deployments → 해당 배포 → Visit → 자료실 로그인에서 진행합니다.
+- 설정 단계는 5, 허용 경로는 기존 CRUD 5개입니다. originalApiUrl은 화면·로그인 발급자와 같은 Supabase 프로젝트의 쿼리 없는 `/rest/v1/learning_notes` HTTPS 주소입니다. 실제 서버 환경변수 값과의 일치는 원격에서 확인하지 않았습니다.
+- publicAppUrl은 기존 배포 주소를 유지합니다. 새 배포·배포 커밋 일치 여부는 미확인입니다. 로그인 issuer/audience/jwksUrl은 기존 Auth 설정과 대조했고 judgeIssuer는 유지했습니다. RULE_IDS는 구현된 기본 거부 `starter.deny`만 유지합니다.
+- 5단계 자기 점검은 비로그인 서버 목록, 정적 메모 파일, 자격증명 없는 원본 API의 GET 총 3건만 전송합니다. 리디렉션·통신 실패는 확인 불가로, 계정 CRUD·타인 접근·원본 DB 권한 검증은 미실행으로 기록합니다. 원본의 무자격증명 거부만으로 DB 권한 회수 성공을 판단하지 않습니다. 실제 결과는 생성된 제출 JSON에 기록하며 심판 판정이 아닙니다.
+- bundle-notes.json과 artifacts/submission.json은 커밋에서 제외합니다. 제출 JSON에 메모 본문·인증정보를 포함하지 않습니다.
 
 기록 기준: 2026-10-12. 4단계 저장점 준비 직전 `preview` HEAD는 `b0c4f81`입니다. CRUD 화면과 공통 API는 `d684150`, 개별 메모 경로·DB 변경 SQL·테스트는 `2f4bea8`, API 소유자 검사와 학습 메모 소유자 SQL은 `916bf13`, RLS SQL은 `b0c4f81`에 반영되었습니다. `preview`의 `916bf13`까지 원격 push를 확인했으며, 이후 커밋의 push나 실제 배포 성공은 확인하지 않았습니다. 이번 저장점은 단계 설정·README·자기 점검을 현재 구현에 맞춥니다. 구현, 사용자 확인, 로컬 모의 검증, 실제 배포 및 심판 판정을 구분합니다.
 

@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (![1, 2, 4].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
+  if (![1, 2, 4, 5].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try {
     app = new URL(config.publicAppUrl);
@@ -13,7 +13,7 @@ export async function runAttackChecks(config) {
     throw new Error('aleph.config.json의 실제 배포 주소를 먼저 넣어 주세요.');
   }
   if (typeof config.sampleMarker !== 'string' || !config.sampleMarker) throw new Error('가상 메모의 확인 표시를 넣어 주세요.');
-  if (config.step === 2 || config.step === 4) {
+  if (config.step === 2 || config.step === 4 || config.step === 5) {
     // Record only status and counts, never response bodies or raw network errors.
     const check = async (path, attackId, expected, inspect) => {
       let response;
@@ -47,7 +47,7 @@ export async function runAttackChecks(config) {
       }
       return { attackId, expected, observed: inspect(response, data) };
     };
-    const api = config.step === 4
+    const api = config.step >= 4
       ? await check('/api/notes', 'anonymous_api_note_read',
         'GET /api/notes: 비로그인 HTTP 401, 메모 반환 없음',
         (response, data) => {
@@ -72,10 +72,20 @@ export async function runAttackChecks(config) {
           || (response.status === 200 && count === 0);
         return `${valid ? '기대와 일치' : '기대와 다름'}: HTTP ${response.status}, 메모 ${count === null ? '배열 확인 불가' : count + '건'}`;
       });
-    if (config.step === 4) {
+    if (config.step >= 4) {
+      const original = [];
+      if (config.step === 5) {
+        const origin = new URL(config.originalApiUrl);
+        if (origin.protocol !== 'https:' || origin.username || origin.password || origin.search || origin.hash) {
+          throw new Error('originalApiUrl은 인증정보·쿼리 없는 HTTPS 주소여야 합니다.');
+        }
+        original.push(await check(origin.href, 'original_api_no_credentials',
+          '자격증명 없는 원본 GET은 401/403으로 거부. DB 권한 회수 검증과 구분',
+          response => `HTTP ${response.status}: 자격증명 없는 원본 GET 응답만 확인. anon·authenticated DB 권한 회수 여부는 미확인`));
+      }
       // No credentials are read or stored. Authenticated and write operations
       // remain explicitly unexecuted until the student verifies them.
-      return [api, staticFile,
+      return [api, staticFile, ...original,
         { attackId: 'owner_crud',
           expected: 'A/B 각각 본인 목록·한 건 GET 200, POST 201, PUT 200, DELETE 204',
           observed: '미실행: 실제 계정의 정상 CRUD는 사용자가 직접 검증 예정' },
@@ -87,9 +97,11 @@ export async function runAttackChecks(config) {
           observed: '미실행: 배포 환경 소유자 위조 검증은 사용자 수행 예정. 로컬 모의 테스트와 구분' },
         { attackId: 'anonymous_other_methods',
           expected: '비로그인 개별 GET 및 POST·PUT·DELETE는 HTTP 401',
-          observed: '미실행: 이 자기 점검은 목록 GET과 정적 파일 GET만 전송함' },
+          observed: '미실행: 이 자기 점검은 자격증명 없는 읽기 요청만 전송함' },
         { attackId: 'database_rls',
-          expected: 'anon 권한 없음, authenticated CRUD 및 auth.uid() 소유자 제한',
+          expected: config.step === 5
+            ? 'PUBLIC·anon·authenticated 직접 권한 없음, service_role CRUD 유지, 원본 직접 읽기·쓰기 거부'
+            : 'anon 권한 없음, authenticated CRUD 및 auth.uid() 소유자 제한',
           observed: '미실행: SQL 적용과 DB 권한·RLS 검증은 사용자가 직접 수행 예정' },
       ];
     }
