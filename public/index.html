@@ -63,8 +63,6 @@
     <ul id="notes" aria-live="polite"><li>자료를 보려면 로그인해 주세요.</li></ul>
   </main>
   <script type="module">
-    const projectUrl = 'https://olcjokkxxsdksvvgkxzx.supabase.co';
-    const publishableKey = 'sb_publishable_CynWMNLK_s_c_IdUWIAEhQ_sgHiubwr';
     const form = document.querySelector('#login-form');
     const email = document.querySelector('#login-email');
     const password = document.querySelector('#login-password');
@@ -270,8 +268,8 @@
       }
     });
     try {
-      const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm');
-      client = createClient(projectUrl, publishableKey);
+      const { createAuthClient } = await import('./auth-client.js');
+      client = createAuthClient();
       client.auth.onAuthStateChange((_event, session) => {
         ready = true;
         renderSession(session);
@@ -279,7 +277,7 @@
       });
     } catch {
       status.textContent = '로그인을 사용할 수 없습니다.';
-      showError('로그인 SDK를 시작하지 못했습니다. 네트워크 상태를 확인하고 새로고침해 주세요.');
+      showError('로그인 기능을 시작하지 못했습니다. 네트워크 상태를 확인하고 새로고침해 주세요.');
     }
   </script>
 
