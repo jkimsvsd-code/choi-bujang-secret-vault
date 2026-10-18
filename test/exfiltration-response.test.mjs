@@ -26,14 +26,14 @@ test('모든 경보를 연결해도 block만 등록하고 중복·만료 연결�
     const save = () => writeFile(options.trustedBindings,
       JSON.stringify({ schema: 'aleph.xdr.trusted-bindings.v1', bindings }));
     await save();
-    assert.equal((await respond(options)).rules, 4);
+    assert.equal((await respond(options)).rules, 10);
     for (const alert of fixture.alerts) {
       assert.equal(await matchesExternalDeny({ ...normal, requestId: alert.id },
         { file: options.output, now: now.getTime() }), classify(alert).action === 'block', alert.id);
     }
     bindings.push({ ...bindings[0] });
     await save();
-    assert.equal((await respond(options)).rules, 3);
+    assert.equal((await respond(options)).rules, 9);
     for (const binding of bindings) binding.expiresAt = now.toISOString();
     await save();
     assert.equal((await respond(options)).rules, 0);
@@ -48,8 +48,8 @@ test('신뢰 연결만 등록하고 동일 요청에만 만료 전 적용한다'
     const fixture = JSON.parse(await readFile(new URL('../xdr/fixtures/exfiltration.json', import.meta.url), 'utf8'));
     const first = await respond(options);
     assert.equal(first.rules, 0);
-    assert.equal(first.candidates, 4);
-    assert.equal(first.notifications, 14);
+    assert.equal(first.candidates, 10);
+    assert.equal(first.notifications, 20);
     const { normal, suspicious } = fixtureRequests();
     assert.equal((await decide(normal)).decision, 'allow');
     assert.equal((await decide(suspicious)).decision, 'step_up');
@@ -71,7 +71,7 @@ test('신뢰 연결만 등록하고 동일 요청에만 만료 전 적용한다'
     await writeFile(path, JSON.stringify(bindings));
     const second = await respond({ ...options, trustedBindings: path });
     assert.equal(second.rules, 1);
-    assert.equal(second.candidates, 3);
+    assert.equal(second.candidates, 9);
     // 실제 연결된 판정기 코드를 임시 자료실에서 실행하여 사용자 규칙 파일을 건드리지 않습니다.
     await mkdir(join(directory, 'src'));
     await mkdir(join(directory, 'xdr/exfiltration'), { recursive: true });
@@ -97,7 +97,7 @@ test('신뢰 연결만 등록하고 동일 요청에만 만료 전 적용한다'
     await writeFile(path, JSON.stringify(bindings));
     assert.equal((await respond({ ...options, trustedBindings: path })).rules, 0);
     const logs = (await readFile(options.log, 'utf8')).trim().split('\n');
-    assert.equal(logs.length, 42);
+    assert.equal(logs.length, 60);
     assert.ok(logs.every(line => JSON.parse(line).enforced === false));
     assert.ok(!logs.join('').includes(normal.subjectId));
   } finally { await rm(directory, { recursive: true, force: true }); }
