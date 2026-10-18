@@ -5,6 +5,7 @@ export const rulesUrl = new URL('../xdr/web-injection/deny-rules.json', import.m
 export const knownCveRulesUrl = new URL('../xdr/known-cve/deny-rules.json', import.meta.url);
 export const persistenceRulesUrl = new URL('../xdr/persistence/deny-rules.json', import.meta.url);
 export const privilegeRulesUrl = new URL('../xdr/privilege/deny-rules.json', import.meta.url);
+export const exfiltrationRulesUrl = new URL('../xdr/exfiltration/deny-rules.json', import.meta.url);
 export const TTL_MS = 15 * 60 * 1000;
 const fields = ['schema', 'requestId', 'classId', 'projectId', 'subjectId', 'deviceId',
   'service', 'method', 'path', 'route', 'queryLength', 'querySha256', 'at', 'policyRevision'];
@@ -28,9 +29,10 @@ export async function matchesExternalDeny(request, { file, now = Date.now() } = 
   const fingerprint = requestFingerprint(request);
   if (!fingerprint) return false;
   // 각 모듈의 전용 파일을 독립적으로 읽습니다. 한 파일의 누락은 다른 규칙을 지우지 않습니다.
-  const sources = file ? [[file, /^(?:wi|kc|ps|pv)-\d{1,6}$/]]
+  const sources = file ? [[file, /^(?:wi|kc|ps|pv|ex)-\d{1,6}$/]]
     : [[rulesUrl, /^wi-\d{1,6}$/], [knownCveRulesUrl, /^kc-\d{1,6}$/],
-      [persistenceRulesUrl, /^ps-\d{1,6}$/], [privilegeRulesUrl, /^pv-\d{1,6}$/]];
+      [persistenceRulesUrl, /^ps-\d{1,6}$/], [privilegeRulesUrl, /^pv-\d{1,6}$/],
+      [exfiltrationRulesUrl, /^ex-\d{1,6}$/]];
   for (const [source, evidenceId] of sources) {
     if (await matchesFile(source, evidenceId, fingerprint, now)) return true;
   }
