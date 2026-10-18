@@ -6,7 +6,7 @@
       "alertId": "ps-01",
       "action": "block",
       "confidence": 0.95,
-      "reason": "서명 없는 새 서비스 등록"
+      "reason": "의심스러운 서비스 등록·변경"
     },
     {
       "alertId": "ps-02",
@@ -24,7 +24,7 @@
       "alertId": "ps-04",
       "action": "block",
       "confidence": 0.9,
-      "reason": "서명 없는 새 서비스 등록"
+      "reason": "의심스러운 서비스 등록·변경"
     },
     {
       "alertId": "ps-05",
@@ -34,21 +34,21 @@
     },
     {
       "alertId": "ps-06",
-      "action": "alert",
-      "confidence": 0.7,
-      "reason": "서명 없는 새 서비스 등록"
+      "action": "block",
+      "confidence": 0.9,
+      "reason": "의심스러운 서비스 등록·변경"
     },
     {
       "alertId": "ps-07",
-      "action": "alert",
-      "confidence": 0.6,
+      "action": "block",
+      "confidence": 0.95,
       "reason": "낯선 예약 작업 등록"
     },
     {
       "alertId": "ps-08",
-      "action": "alert",
-      "confidence": 0.7,
-      "reason": "서명 없는 새 서비스 등록"
+      "action": "block",
+      "confidence": 0.9,
+      "reason": "의심스러운 서비스 등록·변경"
     },
     {
       "alertId": "ps-09",
@@ -64,9 +64,9 @@
     },
     {
       "alertId": "ps-11",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "의심스러운 서비스 등록·변경"
     },
     {
       "alertId": "ps-12",
@@ -76,9 +76,9 @@
     },
     {
       "alertId": "ps-13",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "의심스러운 서비스 등록·변경"
     },
     {
       "alertId": "ps-14",
@@ -94,9 +94,9 @@
     },
     {
       "alertId": "ps-16",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "의심스러운 서비스 등록·변경"
     },
     {
       "alertId": "ps-17",
@@ -148,8 +148,8 @@
     }
   ],
   "counts": {
-    "block": 5,
+    "block": 8,
     "alert": 8,
-    "record": 11
+    "record": 8
   }
 }
