@@ -93,5 +93,22 @@ export function decide(alert) {
     confidence = 0.5;
     reason = '근거 패턴 미확정';
   }
+  // 이 연습의 중간 수준 경보는 공격 확정이 아니라 검토 대상입니다.
+  // 수업 단어/단일 표식은 차단 근거가 아니지만, 중간 수준과 함께 있으면 알림을 유지합니다.
+  const level = alert?.rule?.level;
+  if (confidence < 0.5 && Number.isInteger(level) && level >= 5 && level <= 9) {
+    const hints = [
+      /\b(?:SQL|select)\b|따옴표/i.test(description),
+      /스크립트|\bscript\b/i.test(description),
+      /경로.*(?:\bup\b|\.\.\/)/i.test(description),
+      /구분\s*문자|명령\s*구분자/.test(description),
+    ];
+    const index = hints.indexOf(true);
+    const uncertain = /요청\s*주소.*(?:길|깁)|이상한\s*검색|주입처럼\s*보이는/.test(description);
+    if (index >= 0 || uncertain) {
+      confidence = 0.5;
+      reason = index >= 0 ? PATTERNS[index].name : '근거 패턴 미확정';
+    }
+  }
   return { action: confidence >= 0.85 ? 'block' : confidence >= 0.5 ? 'alert' : 'record', confidence, reason };
 }

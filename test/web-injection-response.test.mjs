@@ -18,7 +18,7 @@ test('신뢰 연결만 등록하고 동일 요청에만 만료 전 적용한다'
     const first = await respond(options);
     assert.equal(first.rules, 0);
     assert.equal(first.candidates, 8);
-    assert.equal(first.notifications, 10);
+    assert.equal(first.notifications, 17);
     const { normal, suspicious } = fixtureRequests();
     assert.equal((await decide(normal)).decision, 'allow');
     assert.equal((await decide(suspicious)).decision, 'step_up');
@@ -56,7 +56,7 @@ test('신뢰 연결만 등록하고 동일 요청에만 만료 전 적용한다'
     await writeFile(path, JSON.stringify(bindings));
     assert.equal((await respond({ ...options, trustedBindings: path })).rules, 0);
     const logs = (await readFile(options.log, 'utf8')).trim().split('\n');
-    assert.equal(logs.length, 30);
+    assert.equal(logs.length, 51);
     assert.ok(logs.every(line => JSON.parse(line).enforced === false));
     assert.ok(!logs.join('').includes(normal.subjectId));
   } finally { await rm(directory, { recursive: true, force: true }); }

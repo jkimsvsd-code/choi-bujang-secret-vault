@@ -58,39 +58,39 @@
     },
     {
       "alertId": "wi-10",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "요청 인자의 SQL 구문 삽입"
     },
     {
       "alertId": "wi-11",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "요청 인자의 스크립트 태그 삽입"
     },
     {
       "alertId": "wi-12",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "요청 인자의 상위 경로 이동 반복"
     },
     {
       "alertId": "wi-13",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "근거 패턴 미확정"
     },
     {
       "alertId": "wi-14",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "요청 인자의 SQL 구문 삽입"
     },
     {
       "alertId": "wi-15",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "근거 패턴 미확정"
     },
     {
       "alertId": "wi-16",
@@ -100,9 +100,9 @@
     },
     {
       "alertId": "wi-17",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "요청 인자의 명령 구분자 삽입"
     },
     {
       "alertId": "wi-18",
@@ -161,7 +161,7 @@
   ],
   "counts": {
     "block": 8,
-    "alert": 2,
-    "record": 16
+    "alert": 9,
+    "record": 9
   }
 }
