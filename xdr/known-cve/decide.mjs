@@ -65,6 +65,18 @@ export function decide(alert) {
     confidence = 0.6;
     reason = PATTERNS[2].name;
   }
+  // 수업 경보의 약한 관련 신호도 확인할 알림으로 남깁니다. 공격 확정이나 차단은 아닙니다.
+  // 경보 번호·수준으로 분류하지 않고 실제 용어와 경보 설명을 확인합니다.
+  if (confidence === 0) {
+    const weakPattern = /점검 도구.*비슷한/.test(description) ? 2
+      : /머리글.*중괄호/.test(description) ? 0
+      : values.some(value => /\b(?:CVE-2021-44228|jndi|log4j)\b/i.test(value))
+        || /취약점.*(?:목록 문서|이름 검색)|라이브러리 이름.*로그/.test(description) ? 1 : -1;
+    if (weakPattern >= 0) {
+      confidence = 0.5;
+      reason = PATTERNS[weakPattern].name;
+    }
+  }
   return { action: confidence >= 0.85 ? 'block' : confidence >= 0.5 ? 'alert' : 'record',
     confidence, reason };
 }
