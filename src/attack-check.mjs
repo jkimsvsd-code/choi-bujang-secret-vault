@@ -16,6 +16,8 @@ export async function runAttackChecks(config) {
   if (config.step === 2 || config.step === 4 || config.step >= 5) {
     // Record only status and counts, never response bodies or raw network errors.
     const check = async (path, attackId, expected, inspect, method = 'GET') => {
+      // The judge sandbox permits only GET/HEAD. Never send write probes.
+      if (!['GET', 'HEAD'].includes(method)) return { attackId, expected, observed: 'not_run' };
       let response;
       try {
         response = await fetch(new URL(path, app), {
@@ -112,8 +114,8 @@ export async function runAttackChecks(config) {
             return `${valid ? '기대와 일치' : '기대와 다름'}: HTTP ${response.status}, 인증 필요 응답 ${valid ? '확인' : '미확인'}. B 로그인 복원·변조 사본 거부는 미실행`;
           }, 'POST'));
       }
-      // No credentials or content are sent. Steps 8–10 send unauthenticated write
-      // probes with no body; authenticated mutations remain unexecuted.
+      // No credentials or content are sent. Write probes are recorded as not_run;
+      // only GET/HEAD probes may reach the network.
       return [api, staticFile, ...original, ...zones, ...recovery,
         ...(config.step >= 6 ? [
           { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: "미실행: 자체 WebAuthn 승인 API 구현. 실제 DB 설치·관리자 승인·보안 장치 확인 후 정상 접근은 미검증" },
