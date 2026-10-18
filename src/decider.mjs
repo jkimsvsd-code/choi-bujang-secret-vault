@@ -1,7 +1,7 @@
 // ALEPH SDP 엔진이 확인한 요청만 받는 학생 판정기 시작점입니다.
 // 등록 기기의 자료실 읽기만 허용하고, 그 밖의 요청은 기본 거부합니다.
 // 요청 본문의 userId, role, 기기 키, 토큰을 별도로 믿거나 저장하지 마세요.
-export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'connection_input', 'compound_access_step_up']);
+export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'connection_input', 'step_up_required']);
 
 // 이 검사는 엔진 전용 호출 경계 안에서만 유효합니다. source 문자열 자체는
 // 인증 증거가 아니며 클라이언트 헤더·본문을 이 입력으로 변환하지 않습니다.
@@ -68,13 +68,18 @@ export async function decide(request) {
       && connection.recentEvents.some(event => event.kind === 'risk_signal'
         && event.ageSeconds <= 60 && event.count >= 20);
     if (compoundRisk) {
-      // 계약상 verified 값만으로 엔진의 추가 확인 요청을 생략하지 않습니다.
+      // 엔진 전용 계약의 가상 재확인 결과와 나이를 함께 검사합니다.
+      // 실제 동일 주체의 새 로그인 검증·자료 차단 연결은 별도 실측 대상입니다.
+      const stepUp = request.stepUp;
+      const recentlyVerified = stepUp?.verified === true
+        && Number.isFinite(stepUp.authAgeSeconds)
+        && stepUp.authAgeSeconds >= 0 && stepUp.authAgeSeconds <= 300;
       return {
         schema: 'aleph.decision.v1',
         requestId: request.requestId,
-        decision: 'step_up',
-        reasonCode: 'step_up_required',
-        ruleIds: ['compound_access_step_up'],
+        decision: recentlyVerified ? 'allow' : 'step_up',
+        reasonCode: recentlyVerified ? 'approved' : 'step_up_required',
+        ruleIds: ['step_up_required'],
       };
     }
     return {

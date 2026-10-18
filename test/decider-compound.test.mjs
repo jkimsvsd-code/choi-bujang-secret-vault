@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { decide } from '../src/decider.mjs';
+import { decide, RULE_IDS } from '../src/decider.mjs';
 import { fixtureRequests } from '../scripts/fixture-7.mjs';
 
 test('정해진 복합 사건은 사유와 함께 추가 확인, 정상 사건은 허용', async () => {
@@ -8,10 +8,32 @@ test('정해진 복합 사건은 사유와 함께 추가 확인, 정상 사건�
   assert.equal((await decide(normal)).decision, 'allow');
   assert.deepEqual(await decide(suspicious), {
     schema: 'aleph.decision.v1', requestId: suspicious.requestId,
-    decision: 'step_up', reasonCode: 'step_up_required', ruleIds: ['compound_access_step_up'],
+    decision: 'step_up', reasonCode: 'step_up_required', ruleIds: ['step_up_required'],
   });
   assert.equal((await decide({ ...suspicious,
-    stepUp: { verified: true, authAgeSeconds: 60 } })).decision, 'step_up');
+    stepUp: { verified: true, authAgeSeconds: 60 } })).decision, 'allow');
+});
+
+test('재확인 나이 경계·누락·위조 및 모든 응답 계약을 검사한다', async () => {
+  const { suspicious } = fixtureRequests();
+  const cases = [
+    [undefined, 'step_up'], [null, 'step_up'], [{ verified: true }, 'step_up'],
+    [{ verified: false, authAgeSeconds: 0 }, 'step_up'],
+    [{ verified: 'true', authAgeSeconds: 60 }, 'step_up'],
+    ...[null, '60', -1, 301, 900, Infinity, NaN].map(authAgeSeconds => [{ verified: true, authAgeSeconds }, 'step_up']),
+    ...[0, 60, 300].map(authAgeSeconds => [{ verified: true, authAgeSeconds }, 'allow']),
+  ];
+  for (const [stepUp, expected] of cases) {
+    const response = await decide({ ...suspicious, stepUp,
+      headers: { 'x-step-up-verified': 'true', 'x-auth-age-seconds': '0' } });
+    assert.equal(response.decision, expected);
+    assert.equal(response.schema, 'aleph.decision.v1');
+    assert.equal(response.requestId, suspicious.requestId);
+    assert.deepEqual(Object.keys(response).sort(), ['decision', 'reasonCode', 'requestId', 'ruleIds', 'schema']);
+    assert.ok(response.ruleIds.every(id => RULE_IDS.includes(id)));
+  }
+  assert.equal((await decide({ ...suspicious, deviceRegistered: false,
+    stepUp: { verified: true, authAgeSeconds: 0 } })).decision, 'deny');
 });
 
 test('지역만으로 차단하지 않으며 세 조건이 모두 있어야 한다', async () => {

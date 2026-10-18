@@ -8,10 +8,10 @@ Vercel, GitHub, Supabase로 가상 메모 자료실을 만들고 단계별로 �
 
 - 서버 로그인·본인 메모 CRUD와 등록 기기 규칙을 보존했습니다. 입력 검사에서 가상 `judge_fixture`와 미확인 `none`을 구분하며, 누락·불명확한 출처를 정상값으로 채우지 않습니다. 클라이언트 헤더는 신뢰 신호로 변환하지 않습니다.
 - 등록 기기의 자료실 GET에서 가상 신호의 새벽 0~5시, `unusual` 네트워크, 최근 60초 이내 `risk_signal` 20건 이상이 모두 겹치면 `step_up`·`step_up_required`를 반환합니다. 지역은 조건에 넣지 않으며 영구 차단하지 않습니다. 개인별 평소 시각을 학습한 결과가 아닌 가상 사건 기준입니다.
-- 실제 구현 규칙은 `starter.deny`, `device_registered`, `connection_input`, `compound_access_step_up`입니다. 제공 계약에는 `stepUp`이 있지만 같은 주체가 추가 확인 요청 이후 다시 로그인했음을 검증하는 계약은 확인하지 못했습니다. `verified`만으로 허용하지 않으며 실제 자료 차단·재로그인 후 새 요청 허용·심판 검증은 미실행입니다.
-- 재실행: `npm.cmd run fixture:7`. 정상 사건은 `allow`, 복합 사건은 `step_up`이어야 합니다. 프로젝트 터미널에서 실행하며 화면 클릭은 없습니다. 미등록 기기는 `deny`·`device_not_registered`입니다. 입력·복합 사건 테스트 6개와 기존 기기 가상 검사 2개를 실행해 통과했습니다. 실제 엔진·심판 판정이 아닙니다.
+- 실제 구현 규칙은 `starter.deny`, `device_registered`, `connection_input`, `step_up_required`입니다. 심판 피드백과 기존 가상 검사에 맞춰 복합 사건에서도 `stepUp.verified === true`이고 `authAgeSeconds`가 유한한 숫자 0~300초이면 허용합니다. 누락·문자열·음수·만료는 추가 확인을 유지합니다. 실제 동일 주체의 새 로그인 시각 검증과 자료 차단·해제 연결은 미실측입니다.
+- 재실행: `npm.cmd run fixture:7`. 정상 사건은 `allow`, 복합 사건은 `step_up`이어야 합니다. 프로젝트 터미널에서 실행하며 화면 클릭은 없습니다. 미등록 기기는 `deny`·`device_not_registered`입니다. 입력·복합 사건 테스트 7개와 `npm.cmd run decider:test`의 정상·미등록·복합·재확인 가상 검사 4개를 실행해 통과했습니다. 실제 엔진·심판 판정이 아닙니다.
 - 설정 단계는 7입니다. CRUD 허용 경로 5개와 서버의 `learning_notes` 사용, 로그인 issuer·audience·JWKS 검증 도우미 연결, 같은 프로젝트의 원본 `/rest/v1/learning_notes` 주소를 대조했습니다. 원격 서버 환경변수 값의 일치는 미확인입니다. `judgeIssuer`는 변경하지 않았습니다.
-- 설정 운영 주소의 `/`와 `/aleph.json`에서 HTTP 200을 확인했습니다. 배포 식별 정보는 6단계·`f283351b0ce6cf2d5cce313ade101001c0215ed3`입니다. 이번 7단계 커밋의 배포는 미확인입니다.
+- 설정 운영 주소의 `/`와 `/aleph.json`에서 HTTP 200을 확인했습니다. 7단계 `76ab0dc` 배포와 최초 심판 결과 43/100점·`S07_SAME_VERDICT`를 확인했습니다. 이번 수정은 규칙 이름과 5분 이내 재확인 허용을 맞춥니다. 수정 커밋의 배포·재심 결과는 커밋 시점에는 미확인입니다.
 - 커밋 후 `npm.cmd run bundle`로 제출 JSON을 생성합니다. HTTP 자기 점검은 비로그인 목록·정적 메모 파일·자격증명 없는 원본 GET 3건이며, 기기·계정 CRUD·DB·재로그인 검증은 미실행으로 기록합니다. 공개 가상 메모는 보존하되 메모 본문·인증정보는 묶음에 넣지 않습니다. `bundle-notes.json`과 `artifacts/submission.json`은 커밋하지 않습니다.
 - 아래 6단계 및 이전 설명은 당시 기록이며 현재 상태는 이 절을 우선합니다.
 
