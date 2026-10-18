@@ -12,6 +12,7 @@ function fixture() {
   const source = readFileSync(new URL('../src/instructor-api.mjs', import.meta.url), 'utf8')
     .replace(/^import .*;\r?\n/gm, '').replace('export async function', 'async function');
   const handler = vm.runInNewContext(source + '; handleInstructorResource', {
+    requireDeviceApproval: async () => true,
     config: {}, console: { warn: line => state.logs.push(line) },
     process: { env: { SUPABASE_URL: 'https://fixture.invalid', SUPABASE_SERVICE_ROLE_KEY: 'fixture-only' } },
     createLoginVerifier: () => async auth => auth === 'Bearer fixture-valid' ? { userId, kind: state.kind } : null,
@@ -107,6 +108,8 @@ test('public notice reads return only published notice rows, never teacher mater
     { notice_id: userId, title: 'draft', content: 'fixture', published: false },
   ];
   const handler = vm.runInNewContext(source + '; handler', {
+    // Existing resource tests run behind an already-verified device boundary.
+    requireDeviceApproval: async () => true,
     config: {}, console: { warn() {} },
     process: { env: { SUPABASE_URL: 'https://fixture.invalid', SUPABASE_SERVICE_ROLE_KEY: 'fixture-only' } },
     createLoginVerifier: () => async () => ({ userId, kind: 'student' }),

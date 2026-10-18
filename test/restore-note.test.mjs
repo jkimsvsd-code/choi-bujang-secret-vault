@@ -12,6 +12,8 @@ function fixture() {
   const source = readFileSync(new URL('../api/restore-note.js', import.meta.url), 'utf8')
     .replace(/^import .*;\r?\n/gm, '').replace('export default async function', 'async function');
   const handler = vm.runInNewContext(source + '; handler', {
+    // Existing resource tests run behind an already-verified device boundary.
+    requireDeviceApproval: async () => true,
     config: {}, process: { env: { SUPABASE_URL: 'https://fixture.invalid', SUPABASE_SERVICE_ROLE_KEY: 'fixture-only' } },
     createLoginVerifier: () => async auth => auth === 'Bearer fixture-b' ? { userId: owner, kind: 'student' } : null,
     createClient: () => ({ async rpc(name, args) {

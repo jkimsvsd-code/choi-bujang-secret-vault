@@ -116,8 +116,8 @@ export async function runAttackChecks(config) {
       // probes with no body; authenticated mutations remain unexecuted.
       return [api, staticFile, ...original, ...zones, ...recovery,
         ...(config.step >= 6 ? [
-          { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: "미실행: 실제 등록 기기 접속 미검증. 11단계 승인 요청·조회 API 미연결. 설치는 승인 증거가 아님" },
-          { attackId: "unregistered_device_read", expected: "미등록 기기 접근 거부", observed: "미실행: 미등록 기기 공격은 심판 담당. 화면은 로그인 후 승인 확인 없이 자료를 요청하므로 승인 전 차단 미구현" },
+          { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: "미실행: 자체 WebAuthn 승인 API 구현. 실제 DB 설치·관리자 승인·보안 장치 확인 후 정상 접근은 미검증" },
+          { attackId: "unregistered_device_read", expected: "미등록 기기 접근 거부", observed: "미실행: 미등록 기기 실제 공격은 심판 담당. 화면과 보호 API의 승인 전 거부는 로컬 모의 검사와 구분" },
         ] : []),
         ...(config.step >= 7 ? [
           { attackId: 'compound_access_step_up', expected: '복합 가상 사건은 step_up, 정상 가상 사건은 allow', observed: '미실행: 이 HTTP 자기 점검에서는 가상 판정기를 호출하지 않음. 별도 로컬 연습과 구분' },

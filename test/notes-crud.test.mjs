@@ -44,6 +44,8 @@ function fixture() {
   const source = readFileSync(new URL('../api/notes.js', import.meta.url), 'utf8')
     .replace(/^import .*;\r?\n/gm, '').replace('export default async function handler', 'async function handler');
   const handler = vm.runInNewContext(source + '; handler', {
+    // Existing resource tests run behind an already-verified device boundary.
+    requireDeviceApproval: async () => true,
     randomUUID, config: {}, console: { warn: message => denials.push(message) },
     process: { env: { SUPABASE_URL: 'https://fixture.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'fixture-only' } },
     createLoginVerifier: () => async value => value === 'Bearer fixture-a' ? { userId: userA }

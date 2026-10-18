@@ -1,3 +1,4 @@
+import { requireDeviceApproval } from '../src/device-access.mjs';
 import { randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
@@ -73,6 +74,7 @@ export default async function handler(req, res) {
     const supabase = createClient(supabaseUrl, secretKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+    if (!await requireDeviceApproval(req, res, supabase, identity)) return;
     const table = () => supabase.from('learning_notes');
     if (req.method === 'POST') {
       const noteId = input.id ?? randomUUID();

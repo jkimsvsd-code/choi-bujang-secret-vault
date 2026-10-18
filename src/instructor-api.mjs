@@ -1,3 +1,4 @@
+import { requireDeviceApproval } from './device-access.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from './verify-login.mjs';
 import config from '../aleph.config.json' with { type: 'json' };
@@ -41,6 +42,7 @@ export async function handleInstructorResource(req, res, operation) {
 
   try {
     const db = createClient(url, secretKey, { auth: { autoRefreshToken: false, persistSession: false } });
+    if (!await requireDeviceApproval(req, res, db, identity)) return;
     // Re-read on every request: neither a client role nor a cached grant is authority.
     const permission = await db.from('vault_instructors').select('user_id,active')
       .eq('user_id', identity.userId).eq('active', true).maybeSingle();

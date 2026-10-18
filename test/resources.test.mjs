@@ -9,6 +9,8 @@ function load(name, denials = []) {
     .replace(/^import .*;\r?\n/gm, '')
     .replace('export default async function handler', 'async function handler');
   return vm.runInNewContext(source + '; handler', {
+    // Existing resource tests run behind an already-verified device boundary.
+    requireDeviceApproval: async () => true,
     config: {}, console: { warn: message => denials.push(message) },
     process: { env: { SUPABASE_URL: 'https://fixture.invalid', SUPABASE_SERVICE_ROLE_KEY: 'fixture-only' } },
     createLoginVerifier: () => async auth => auth === 'Bearer fixture-valid'

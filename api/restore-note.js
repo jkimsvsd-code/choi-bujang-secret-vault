@@ -1,3 +1,4 @@
+import { requireDeviceApproval } from '../src/device-access.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
 import config from '../aleph.config.json' with { type: 'json' };
@@ -38,6 +39,7 @@ export default async function handler(req, res) {
   }
   try {
     const db = createClient(url, secretKey, { auth: { autoRefreshToken: false, persistSession: false } });
+    if (!await requireDeviceApproval(req, res, db, identity)) return;
     const { data, error } = await db.rpc('restore_b_fixture_note', {
       p_caller: identity.userId, p_id: TARGET, p_apply: input.mode === 'restore',
       p_hash: input.mode === 'restore' ? input.contentHash : null,

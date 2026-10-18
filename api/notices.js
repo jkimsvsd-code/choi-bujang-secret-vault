@@ -1,3 +1,4 @@
+import { requireDeviceApproval } from '../src/device-access.mjs';
 import { createClient } from '@supabase/supabase-js';
 import { createLoginVerifier } from '../src/verify-login.mjs';
 import config from '../aleph.config.json' with { type: 'json' };
@@ -30,9 +31,10 @@ export default async function handler(req, res) {
   if (!process.env.SUPABASE_URL || !secretKey) {
     return res.status(500).json({ error: 'Server configuration unavailable' });
   }
+  let identity;
   try {
     verifyLogin ??= createLoginVerifier({ config, supabaseSecretKey: secretKey });
-    const identity = await verifyLogin(authorization);
+    identity = await verifyLogin(authorization);
     if (!identity || !UUID.test(identity.userId ?? '')) {
       return deny(401, 'authentication_failed', 'Authentication failed');
     }
@@ -43,6 +45,7 @@ export default async function handler(req, res) {
     const db = createClient(process.env.SUPABASE_URL, secretKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
+    if (!await requireDeviceApproval(req, res, db, identity)) return;
     const { data, error } = await db.from('learning_notices').select('notice_id,title,content')
       .eq('published', true).order('notice_id', { ascending: true });
     if (error) return deny(503, 'notices_unavailable', 'Notices unavailable');
