@@ -1,3 +1,4 @@
+import {createOperationsView} from '../public/operations-client.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
@@ -5,12 +6,13 @@ import {readFileSync} from 'node:fs';
 function harness({ceremony,status}={}){
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  let script=html.match(/<script type="module">([\s\S]*?)<\/script>/)[1];
- script=script.slice(0,script.lastIndexOf('    try {')).replace(/^    import .*;$/m,'');
+ script=script.slice(0,script.lastIndexOf('    try {')).replace(/^    import .*;$/gm,'');
  const nodes=new Map();
  function element(){return {value:'stale protected text',textContent:'',hidden:false,children:[],addEventListener(){},setAttribute(){},querySelectorAll(){return [];},reset(){},replaceChildren(...v){this.children=v;},append(...v){this.children.push(...v);}};}
  const document={addEventListener(){},querySelector(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);},createElement:element};
  const calls=[];
  const api=vm.runInNewContext(script+';({renderSession,loadNotes,writeNote,checkDevice,invalidateApproval})',{
+ createOperationsView: options => createOperationsView({...options, fetcher: async (path,options) => {calls.push({path,options}); return {ok:false,status:503};}}),
  document,AbortController,window:{addEventListener(){}},clearTimeout(){},setTimeout(){return 1;},
  runDeviceCeremony:ceremony??(async()=>({status:'pending'})),deviceRequest:status??(async()=>({status:'approved'})),
  async fetch(path,options){calls.push({path,options});return {ok:true,status:200,json:async()=>[{id:'fixture',title:'fixture-title',body:'fixture-body'}]};}});
@@ -29,7 +31,7 @@ test('login/forged approval fields/pending registration never request protected 
 test('server-confirmed grant opens original UI; invalidation clears it; late approval cannot reopen logged-out UI',async()=>{
  const result={status:'approved',grant:'a'.repeat(43),expiresAt:Date.now()+300000};
  const {api,nodes,calls}=harness({ceremony:async()=>result});api.renderSession(session);await api.checkDevice(false);
- assert.equal(nodes.get('#note-editor').hidden,false);assert.equal(calls.length,1);assert.equal(calls[0].options.headers['X-Device-Grant'],result.grant);assert.equal(nodes.get('#notes').children[0].children[0].textContent,'fixture-title');
+ assert.equal(nodes.get('#note-editor').hidden,false);assert.equal(calls.length,2);assert.equal(calls[0].path,'/api/operations');assert.equal(calls[1].path,'/api/notes');assert.equal(calls[0].options.headers['X-Device-Grant'],result.grant);assert.equal(nodes.get('#notes').children[0].children[0].textContent,'fixture-title');
  api.invalidateApproval();assert.equal(nodes.get('#note-editor').hidden,true);assert.equal(nodes.get('#note-title').value,'');
  let resolve;const late=harness({ceremony:()=>new Promise(r=>{resolve=r;})});late.api.renderSession(session);const pending=late.api.checkDevice(false);late.api.renderSession(null);resolve(result);await pending;assert.equal(late.calls.length,0);assert.equal(late.nodes.get('#note-editor').hidden,true);
 });

@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (![1, 2, 4, 5, 6, 7, 8, 9, 10, 11].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
+  if (![1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try {
     app = new URL(config.publicAppUrl);
@@ -132,7 +132,7 @@ export async function runAttackChecks(config) {
         ] : []),
         { attackId: 'owner_crud',
           expected: 'A/B 각각 본인 목록·한 건 GET 200, POST 201, PUT 200, DELETE 204',
-          observed: '미실행: 실제 계정의 정상 CRUD는 사용자가 직접 검증 예정' },
+          observed: '미실행: 실제 계정의 정상 CRUD·작전실 정상 요약 및 서버 기록 대조·41종 실측은 미실행' },
         { attackId: 'cross_owner_access',
           expected: 'A/B 서로의 메모 GET·PUT·DELETE 404, 타인 자료 반환·변경 없음',
           observed: '미실행: 실제 계정의 타인 메모 접근은 사용자가 직접 검증 예정' },

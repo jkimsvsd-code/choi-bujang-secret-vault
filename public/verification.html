@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>탈환 작전실 · 실측 기록 절차</title>
+<style>body{font-family:system-ui,sans-serif;background:#101a28;color:#ecf4ff;margin:0;padding:28px;line-height:1.7}main{max-width:1500px;margin:auto}a{color:#8ad8df}table{border-collapse:collapse;width:100%;min-width:1200px}th,td{border:1px solid #51667c;padding:12px;text-align:left;vertical-align:top}th{background:#1a2a3d}td{overflow-wrap:anywhere}li{margin:12px 0}.table-scroll{overflow:auto}code{color:#8ad8df}</style></head><body><main>
+<a href="/">자료실로 돌아가기</a><h1>1~11단계 정상·금지 요청 실측 기록</h1>
+<p><strong>현재: 41종 모두 미실행. 실측 통과 0/41.</strong> 아래는 저장소 구현과 단계 기록을 바탕으로 만든 자료실용 시험안입니다. 공식 심판의 41종 목록은 제공되지 않았으므로 공식 목록과 동일하다고 주장하지 않습니다. 기존 모의 검사·이전 배포의 결과를 옮겨 적지 않습니다. 이 페이지는 기록 양식이며 자동 실행·자동 집계 화면이 아닙니다.</p>
+<h2>한 표에 기록하는 절차</h2><ol>
+<li>표를 접근이 제한된 작업 기록에 복사합니다. 실행 묶음 ID, 대상 배포 URL·커밋·단계, 검사 범위, 시험 환경을 표 위에 적습니다. <code>git status --short</code>·<code>git log -1 --oneline</code>과 실제 <code>/aleph.json</code>을 대조합니다. 다른 배포·리디렉션·설정 불명은 확인 불가입니다. 현재 11단계 승인 조건을 모든 보호 요청의 정상 전제로 적용합니다. 과거 단계의 취약한 공개 접근을 복원하지 않습니다.</li>
+<li>시험 A/B·강사·등록/미등록 기기를 준비합니다. 비밀번호·토큰은 공식 입력 화면과 기존 세션으로만 전달합니다. 별도 시험 메모를 쓰고 기존 자료·정책·복원 기준은 보존합니다. 복원·회수·권한 변경 검사는 준비된 시험 대상에서만 수행합니다. 필요한 API나 시험 환경이 없으면 미실행으로 남깁니다.</li>
+<li>각 단계의 정상 요청을 먼저 보내고, 금지 요청, 정상 요청 재확인 순으로 수행합니다. 한 행에 여러 요청이 있으면 T번호에 -a/-b처럼 하위 실행 ID를 붙여 같은 표에 행을 복제합니다. 모든 하위 요청 증거가 있어야 해당 시험 한 종을 통과로 집계합니다. 재시험은 기존 실패 행을 덮어쓰지 말고 새 행으로 추가합니다.</li>
+<li>개발자 도구 → Network에서 실제 API 상태 코드·고정 사유·판정·허용/거부 효과를 관측합니다. 정상 200만으로 소유권 검사가 통과했다고 판단하지 않으며, 금지 요청은 거부 후 자료 비반환·변경 없음도 확인합니다. 401/403 이외에도 계약에 따라 404·405·409 또는 엔진 deny/step_up이 기대 결과일 수 있습니다. 5xx·통신 실패·리디렉션은 금지 요청 통과가 아닙니다.</li>
+<li>서버 응답의 실제 requestId 또는 서버가 발급한 추적 헤더와 그 필드명을 기록합니다. 서버 기록에서 동일 ID·경로·시각·상태를 대조합니다. 제공하지 않으면 “미제공”으로 적고 서버 대조는 확인 불가로 남깁니다. 임의 UUID·T번호·작전실 snapshotId를 실제 요청 ID 대신 쓰지 않습니다. snapshotId는 요약 응답과 operations_summary 기록을 대조할 때만 사용합니다.</li>
+<li>확인 시각은 응답 관측 시각을 ISO 8601과 시간대(예: +09:00)로 기록하고, 서버 시각과 다르면 둘 다 적습니다. 요청 전에는 시각과 ID를 채우지 않습니다. 증거에는 상태·고정 사유·일치 여부·배포 커밋·비식별 요청 ID만 남깁니다. 원본 HAR·전체 헤더·응답 JSON을 첨부하지 말고 토큰·쿠키·이메일·실명·사용자/기기 ID·메모 제목/본문을 제외합니다. 요청 ID 자체에 개인정보가 섞이면 공개 표에서는 제외하고 제한된 서버 기록에서만 대조합니다.</li>
+<li>판정은 미실행 / 확인 불가 / 실패 / 실측 통과로 구분합니다. 요청을 보내지 않음은 미실행, 응답을 받았어도 필수 증거 또는 서버 대조가 없으면 확인 불가입니다. 기대 결과와 다르면 실패입니다. 기대와 실제 응답·효과·동일 요청의 서버 기록이 모두 일치한 행만 실측 통과입니다. 모의 테스트와 과거 심판 점수는 실측 결과 칸에 넣지 않습니다.</li>
+<li>완료 전 정상 허용과 금지 거부의 증거가 모두 있는지 확인합니다. 탐지 propose_revocation만으로 회수 통과를 기록하지 않으며, 회수 후 금지 요청 거부와 영향받지 않은 정상 요청 허용을 각각 실측합니다. 복구 미리보기는 복원 완료가 아닙니다. 41종의 모든 필수 하위 요청이 실측 통과하기 전에는 “41종 통과” 또는 “전체 완료”로 표시하지 않습니다.</li></ol>
+<p>명령 <code>node --test test/operations.test.mjs</code>은 요약 표시의 모의 검사만 수행합니다. 이 표의 41종 API 실측을 대신하지 않습니다. 화면에서는 자료실 → 탈환 작전실 → 작전실 요약 새로고침 후, 같은 요약 ID의 가린 서버 기록을 대조합니다.</p>
+<h2>통합 기록표</h2><p>실행 묶음·배포 커밋·환경: 미지정. —는 증거 없음이며 0건이나 성공을 뜻하지 않습니다. 실제 결과 칸에는 HTTP / 고정 사유 / 허용·거부 효과를 함께 기록합니다. 서버 대조 칸에는 가린 기록의 위치와 일치 여부를 기록합니다.</p>
+<div class="table-scroll" role="region" aria-label="41종 시험 기록" tabindex="0"><table><thead><tr><th>시험 ID</th><th>단계</th><th>구분</th><th>요청·전제</th><th>기대 결과</th><th>실제 API 결과</th><th>실제 요청 ID·출처</th><th>확인 시각</th><th>판정</th><th>가린 서버 기록 대조</th></tr></thead><tbody>
+<tr><td>T01</td><td>1</td><td>정상</td><td>첫 화면 GET /</td><td>200&#183;로그인 안내, 메모 본문 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T02</td><td>1</td><td>금지</td><td>비로그인 GET /data.json</td><td>404 또는 빈 배열&#183;메모 본문 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T03</td><td>2</td><td>정상</td><td>승인 기기 A GET /api/notes</td><td>200&#183;본인 자료만, 본문은 기록 제외</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T04</td><td>2</td><td>정상</td><td>승인 기기 B GET /api/notes/:id (본인)</td><td>200&#183;대상&#183;소유 일치 여부만 기록</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T05</td><td>2</td><td>금지</td><td>무인증 GET /api/notes 및 /api/notes/:id</td><td>두 요청 각각 401&#183;자료 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T06</td><td>3</td><td>정상</td><td>시험 계정 로그인 POST /api/auth</td><td>200&#183;세션 발급 여부만, 토큰 기록 금지</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T07</td><td>3</td><td>금지</td><td>잘못된 자격증명 POST /api/auth</td><td>로그인 거부&#183;세션 미발급, 계약의 상태&#183;고정 사유 기록</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T08</td><td>3</td><td>금지</td><td>무효&#183;만료 토큰으로 자료 GET</td><td>각각 401&#183;자료 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T09</td><td>3</td><td>정상</td><td>로그아웃 뒤 보호 자료 요청&#183;화면 확인</td><td>로그아웃 성공&#183;후속 무인증 401&#183;늦은 응답 재표시 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T10</td><td>4</td><td>정상</td><td>A의 폐기 가능한 시험 메모 POST</td><td>201&#183;소유자 A, 대상은 시험 별칭으로 기록</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T11</td><td>4</td><td>정상</td><td>A 본인 시험 메모 GET 및 PUT</td><td>각각 200&#183;소유자 유지</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T12</td><td>4</td><td>정상</td><td>A 본인 시험 메모 DELETE 후 GET</td><td>204 후 404&#183;지정 복원 대상은 사용 금지</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T13</td><td>4</td><td>금지</td><td>B가 A의 시험 메모 GET&#183;PUT&#183;DELETE</td><td>각각 404&#183;원본 불변</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T14</td><td>4</td><td>금지</td><td>A가 B의 시험 메모 GET&#183;PUT&#183;DELETE</td><td>각각 404&#183;원본 불변</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T15</td><td>4</td><td>금지</td><td>owner_id&#183;userId&#183;role 위조로 소유권 이전 시도</td><td>위조 값 무시 또는 거부&#183;타인 소유권 획득 불가, 본인 후속 조회 성공</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T16</td><td>5</td><td>정상</td><td>승인 기기 본인 서버 GET /api/notes</td><td>200&#183;정상 서버 경로 유지</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T17</td><td>5</td><td>금지</td><td>anon 원본 learning_notes 읽기&#183;쓰기</td><td>권한 거부&#183;읽기/변경 없음, API 키 누락 오류와 구분</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T18</td><td>5</td><td>금지</td><td>authenticated 원본 learning_notes 읽기&#183;쓰기</td><td>권한 거부&#183;읽기/변경 없음, 사용자 인증 문맥에서 확인</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T19</td><td>6</td><td>정상</td><td>운영 엔진이 검증한 등록 기기의 허용 GET</td><td>판정 allow 및 실제 자료 API 200</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T20</td><td>6</td><td>금지</td><td>운영 엔진 경유 미등록 기기의 동일 GET</td><td>deny&#183;device_not_registered 또는 엔진 선차단&#183;자료 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T21</td><td>7</td><td>정상</td><td>정상 신호&#183;등록 기기의 허용 GET</td><td>allow 및 실제 자료 API 200</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T22</td><td>7</td><td>금지</td><td>복합 위험 신호의 허용 경로 GET</td><td>step_up&#183;step_up_required, 추가 확인 전 자료 차단</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T23</td><td>7</td><td>금지</td><td>누락&#183;만료된 추가 확인으로 같은 요청</td><td>각각 step_up 유지&#183;자료 차단</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T24</td><td>7</td><td>정상</td><td>동일 주체의 유효한 새 추가 확인 후 요청</td><td>allow 및 실제 자료 API 200, 주체&#183;시각 검증</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T25</td><td>8</td><td>정상</td><td>승인 기기 GET /api/notices</td><td>200&#183;공개 상태 공지만, 본문 기록 제외</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T26</td><td>8</td><td>정상</td><td>승인된 활성 강사의 자료 GET&#183;시험 공지 PUT</td><td>각각 200&#183;허용 자원만, 전용 시험 공지만 변경</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T27</td><td>8</td><td>금지</td><td>일반 POST /api/notices</td><td>405&#183;변경 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T28</td><td>8</td><td>금지</td><td>일반 사용자&#183;위조 role의 강사 GET 및 관리 PUT</td><td>각각 403&#183;자료/변경 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T29</td><td>8</td><td>금지</td><td>판정기 경유 미허용 구역&#183;쓰기&#183;쿼리 우회</td><td>각각 deny&#183;자료/변경 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T30</td><td>9</td><td>정상</td><td>격리 시험 환경의 정상 조회 사건</td><td>observe&#183;정상 요청 허용, 사건 전달 근거 필요</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T31</td><td>9</td><td>금지</td><td>격리 환경의 같은 주체 10분 내 121건 GET 사건</td><td>propose_revocation&#183;burst_read, 회수 완료와 구분</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T32</td><td>9</td><td>금지</td><td>실제 회수 확인 뒤 해당 시험 접속의 자료 GET</td><td>실제 접속 거부&#183;자료 없음, 회수 요청 ID와 후속 요청 ID 기록</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T33</td><td>9</td><td>정상</td><td>위 회수 후 영향받지 않은 정상 기기의 GET</td><td>실제 200&#183;정상 접속 유지</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T34</td><td>10</td><td>정상</td><td>B POST /api/restore-note mode=preview</td><td>200&#183;ID/소유자/해시 일치 true&#183;restored=false</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T35</td><td>10</td><td>정상</td><td>확인된 시험 사본으로 B mode=restore</td><td>200&#183;restored=true&#183;ID/소유자/해시 일치, 다른 자료/감사 보존</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T36</td><td>10</td><td>금지</td><td>다른 계정의 지정 B 대상 복원 요청</td><td>403&#183;변경 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T37</td><td>10</td><td>금지</td><td>확인 해시 불일치 또는 격리 사본 변조 후 복원</td><td>409&#183;변경 없음, 운영 사본 변조 금지</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T38</td><td>11</td><td>금지</td><td>로그인만 한 보호 API 요청</td><td>403&#183;device_not_approved&#183;자료 없음</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T39</td><td>11</td><td>금지</td><td>pending 등록 또는 클라이언트 승인 표시 위조 후 보호 요청</td><td>403&#183;자료 없음, 등록 202는 승인 아님</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T40</td><td>11</td><td>정상</td><td>관리자 승인&#183;새 WebAuthn 서명&#183;status 확인 후 본인 GET</td><td>기기 status approved 및 자료 200&#183;두 요청 ID 기록</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+<tr><td>T41</td><td>11</td><td>금지</td><td>승인 철회 또는 grant 만료 뒤 보호 GET</td><td>각각 403&#183;자료 없음&#183;화면 자료 제거</td><td>미실행</td><td>—</td><td>—</td><td>미실행</td><td>—</td></tr>
+</tbody></table></div></main></body></html>

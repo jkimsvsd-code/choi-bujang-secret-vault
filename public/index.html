@@ -64,6 +64,14 @@
       <button id="logout-button" type="button" hidden disabled>로그아웃</button>
       <p id="auth-error" role="alert" hidden></p>
     </section>
+    <section class="auth-panel" aria-labelledby="operations-heading">
+      <h2 id="operations-heading">탈환 작전실</h2>
+      <p><a href="/verification.html" style="color:#8ad8df">1~11단계 · 41종 실측 기록 절차와 통합 표</a> — 전체 미실행, 실제 요청 증거가 있을 때만 기록합니다.</p>
+      <p>서버가 확인한 요약입니다. 미확인 건수는 0으로 표시하지 않습니다. 메모 본문은 이 요약에 포함하지 않습니다.</p>
+      <button id="operations-refresh" type="button" disabled>작전실 요약 새로고침</button>
+      <p id="operations-output" role="status" style="white-space:pre-wrap;overflow-wrap:anywhere">미실행 — 로그인과 기기 승인 후 요약을 확인해 주세요.</p>
+      <p>서버의 operations_summary 기록에서 같은 요약 ID·시각·규칙 수·복구 버전을 대조하세요. 운영 사건과 회수 결과가 연결되기 전에는 완료로 표시하지 않습니다.</p>
+    </section>
     <section id="note-editor" class="auth-panel" aria-labelledby="note-heading" hidden>
       <h2 id="note-heading">가상 메모 추가</h2>
       <form id="note-form">
@@ -81,6 +89,13 @@
   <script type="module" src="/app-status.js"></script>
   <script type="module">
     import {runDeviceCeremony, deviceRequest} from "./device-client.js";
+    import {createOperationsView} from './operations-client.js';
+    const operations = createOperationsView({
+      output: document.querySelector('#operations-output'),
+      button: document.querySelector('#operations-refresh'),
+      getHeaders: () => hasVerifiedDeviceApproval() ? {Authorization: `Bearer ${activeSession.access_token}`, ...deviceHeaders()} : null,
+      onDenied: () => invalidateApproval(),
+    });
     const form = document.querySelector('#login-form');
     const email = document.querySelector('#login-email');
     const password = document.querySelector('#login-password');
@@ -107,6 +122,7 @@
     }
     function deviceHeaders() { return hasVerifiedDeviceApproval() ? {'X-Device-Grant':deviceGrant.grant} : {}; }
     function invalidateApproval() {
+      operations.clear();
       deviceGrant = null;
       clearTimeout(grantTimer);
       clearProtectedView();
@@ -137,7 +153,8 @@
         grantTimer=setTimeout(invalidateApproval,Math.max(0,result.expiresAt-Date.now()));
         label.textContent='승인됨 — 서버가 보안 장치 서명과 관리자 승인을 확인했습니다. 5분 후 다시 확인합니다.';
         editor.hidden=false;
-        await loadNotes(activeSession);
+        await operations.refresh();
+        if(hasVerifiedDeviceApproval()) await loadNotes(activeSession);
       }catch(error){
         if(version!==authVersion)return;
         const messages={approval_pending_or_missing:'승인 대기 또는 미등록입니다. 관리자 승인 후 다시 확인해 주세요.',device_bound_authenticator_required:'동기화 패스키 대신 이 기기에 연결된 보안 장치를 사용해 주세요.',device_service_unavailable:'기기 승인 서버 설정을 확인해 주세요.',webauthn_unavailable:'이 브라우저는 보안 장치 확인을 지원하지 않습니다.',origin_not_allowed:'등록된 운영 자료실 주소에서 확인해 주세요.'};
