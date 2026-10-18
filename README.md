@@ -6,6 +6,10 @@ Vercel, GitHub, Supabase로 가상 메모 자료실을 만들고 단계별로 �
 
 ## 8단계 구현 기록
 
+- 구현 커밋 `3f984ce`의 확인 결과: GitHub main 반영과 Vercel 운영 Ready를 확인했습니다. 운영 `/aleph.json`은 단계 8과 `3f984cef22f165e9c435a22395b3e765078949f1`을 반환했습니다. 이 확인 기록을 추가하는 문서 커밋의 배포 결과와는 구분합니다.
+- 원격 저장소를 별도 폴더에 새로 clone한 뒤 Node 24.21.0 / npm 11.19.0에서 `npm install`이 종료 코드 0으로 끝났습니다. 패키지 10개 설치, 검사 대상 11개, 보고된 취약점 0건이며 설치 후 추적 파일 변경은 없습니다.
+- 관련 모의 테스트 26개와 `npm.cmd run decider:test` 가상 검사 4개를 다시 실행해 통과했습니다. 추가로 서비스·경로·메서드·기기·쿼리·재확인 상태를 조합한 가상 요청 1,296개에서 계약 밖 속성 접근이 없고 응답 다섯 항목과 requestId가 유지되며 모든 ruleIds가 RULE_IDS에 포함되는지 확인했습니다. 모든 가능한 입력이나 운영 심판 요청 전체를 검증했다는 의미는 아닙니다.
+- 실제 비로그인 HTTP 확인: 메모·공지 조회, 공지 관리 PUT, 강사 자료 GET은 401, 일반 공지 POST는 405였습니다. 실제 로그인 계정 간 타인 자료 거부와 본인·강사 성공 요청은 아직 실측하지 않았습니다. 해당 동작의 통과 결과는 모의 검사입니다.
 - 메모와 공지는 서버가 `notes`, `notices` 자원 ID로 지정합니다. 기존 메모·주소·화면 메뉴를 보존합니다. 판정기는 서비스·경로·경로 모양을 함께 검사하며 단일 메모 GET과 공지 목록 GET만 허용합니다. 메모 목록·쓰기, 공지 쓰기, 강사 자료, 알 수 없는 경로, 쿼리 요청과 export 기능 경로는 거부합니다. 기기 등록·입력 검사·복합 사건 추가 확인은 유지합니다. 구현 규칙은 `starter.deny`, `device_registered`, `connection_input`, `step_up_required`, `resource_zones`입니다.
 - 설정 단계는 8이며 `allowedRoutes`는 `GET /api/notes/:id`, `GET /api/notices` 두 개입니다. 기존 메모 API CRUD와 소유자 검사는 유지하지만 판정기 경유 허용 범위는 더 좁습니다. 서버 전용 강사 경로는 판정기 허용 목록에 넣지 않습니다. 로그인 issuer·audience·JWKS와 `judgeIssuer`, 원본 `learning_notes` API 주소는 유지합니다.
 - `supabase/step8_resource_permissions.sql`은 기존 메모를 변경하지 않고 `vault_instructors`, `learning_notices`, `instructor_materials`를 추가합니다. 사용자가 SQL 실행 성공과 강사 등록 완료를 보고했습니다. 에이전트가 실제 DB 상태를 조회한 결과는 아닙니다. 강사 권한은 DB 관리자만 등록하며 앱 서버는 권한표를 읽기만 합니다.
