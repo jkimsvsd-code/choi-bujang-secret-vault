@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (![1, 2, 4, 5, 6, 7, 8, 9, 10].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
+  if (![1, 2, 4, 5, 6, 7, 8, 9, 10, 11].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try {
     app = new URL(config.publicAppUrl);
@@ -116,8 +116,8 @@ export async function runAttackChecks(config) {
       // probes with no body; authenticated mutations remain unexecuted.
       return [api, staticFile, ...original, ...zones, ...recovery,
         ...(config.step >= 6 ? [
-          { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: "미실행: 실제 등록 기기 접속 미검증. 로컬 가상 요청 연습과 구분" },
-          { attackId: "unregistered_device_read", expected: "미등록 기기 접근 거부", observed: "미실행: 미등록 기기 공격은 심판 담당. 자기 점검에서 공격하지 않음" },
+          { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: "미실행: 실제 등록 기기 접속 미검증. 11단계 승인 요청·조회 API 미연결. 설치는 승인 증거가 아님" },
+          { attackId: "unregistered_device_read", expected: "미등록 기기 접근 거부", observed: "미실행: 미등록 기기 공격은 심판 담당. 화면은 로그인 후 승인 확인 없이 자료를 요청하므로 승인 전 차단 미구현" },
         ] : []),
         ...(config.step >= 7 ? [
           { attackId: 'compound_access_step_up', expected: '복합 가상 사건은 step_up, 정상 가상 사건은 allow', observed: '미실행: 이 HTTP 자기 점검에서는 가상 판정기를 호출하지 않음. 별도 로컬 연습과 구분' },
