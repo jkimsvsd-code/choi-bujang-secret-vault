@@ -10,8 +10,8 @@
     },
     {
       "alertId": "pv-02",
-      "action": "alert",
-      "confidence": 0.7,
+      "action": "block",
+      "confidence": 0.9,
       "reason": "권한 상승 뒤 낯선 관리자 명령 실행"
     },
     {
@@ -28,14 +28,14 @@
     },
     {
       "alertId": "pv-05",
-      "action": "alert",
-      "confidence": 0.65,
+      "action": "block",
+      "confidence": 0.9,
       "reason": "평범한 계정의 관리자 그룹 추가"
     },
     {
       "alertId": "pv-06",
-      "action": "alert",
-      "confidence": 0.6,
+      "action": "block",
+      "confidence": 0.9,
       "reason": "권한 상승 뒤 낯선 관리자 명령 실행"
     },
     {
@@ -46,14 +46,14 @@
     },
     {
       "alertId": "pv-08",
-      "action": "alert",
-      "confidence": 0.7,
+      "action": "block",
+      "confidence": 0.9,
       "reason": "권한 상승 뒤 낯선 관리자 명령 실행"
     },
     {
       "alertId": "pv-09",
-      "action": "alert",
-      "confidence": 0.65,
+      "action": "block",
+      "confidence": 0.9,
       "reason": "평범한 계정의 관리자 그룹 추가"
     },
     {
@@ -64,21 +64,21 @@
     },
     {
       "alertId": "pv-11",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "평범한 계정의 관리자 그룹 추가"
     },
     {
       "alertId": "pv-12",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "권한 상승 뒤 낯선 관리자 명령 실행"
     },
     {
       "alertId": "pv-13",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "권한 상승 뒤 낯선 관리자 명령 실행"
     },
     {
       "alertId": "pv-14",
@@ -88,9 +88,9 @@
     },
     {
       "alertId": "pv-15",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "평범한 계정의 관리자 그룹 추가"
     },
     {
       "alertId": "pv-16",
@@ -100,9 +100,9 @@
     },
     {
       "alertId": "pv-17",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "평범한 계정의 관리자 그룹 추가"
     },
     {
       "alertId": "pv-18",
@@ -160,8 +160,8 @@
     }
   ],
   "counts": {
-    "block": 4,
+    "block": 9,
     "alert": 8,
-    "record": 14
+    "record": 9
   }
 }

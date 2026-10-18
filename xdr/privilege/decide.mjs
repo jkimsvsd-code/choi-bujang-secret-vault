@@ -1,12 +1,12 @@
 const PATTERNS = [
   {
     "name": "평범한 계정의 관리자 그룹 추가",
-    "condition": "rule.description에 관리자 그룹 추가가 명시되었는지 확인하고 data.group이 있으면 administrators와 대조한다. 원격 주소에서의 추가나 추가 직후 관리자 명령 실행이 명시되면 함께 검토한다. 일반 과제 그룹 추가·그룹 조회·설명 변경은 제외한다. 관리자 그룹 추가만으로 계정 도용이나 취약점 악용을 확정하지 않는다.",
+    "condition": "관리자 그룹 추가와 원격 주소·직후 명령 실행의 결합, 같은 주소의 여러 계정 추가, 제거된 계정의 짧은 시간 내 관리자 재가입을 강한 수업용 신호로 본다. data.group이 있으면 administrators와 대조한다. 과제 그룹 추가·새 로컬 그룹 생성·그룹 설명 변경은 약한 변경 신호로 알림만 남기며 단순 그룹 조회는 제외한다. 이 조건은 계정 도용의 입증이 아니다.",
     "evidence": "MITRE ATT&CK T1078은 기존 계정의 자격증명 악용으로 높은 권한에 접근하는 형태를 설명한다; 관리자 그룹 추가는 이 과제의 보조 관찰 신호이며 그 자체가 T1078의 도용 증거는 아니다: https://attack.mitre.org/techniques/T1078/"
   },
   {
     "name": "권한 상승 뒤 낯선 관리자 명령 실행",
-    "condition": "rule.description에 권한 상승 직후 관리자 명령 실행 또는 평소와 다른 관리자 명령 실행이 명시되었는지 확인한다. 처음 보는 출발 주소는 보조 신호로만 쓰며 처음 보는 명령과 구분한다. 취소된 권한 상승 창·실패한 명령·단순 세션 조회를 성공한 권한 사용으로 세지 않는다. 취약점 악용 근거가 없으면 T1068 확정이 아닌 추가 확인 대상으로 둔다.",
+    "condition": "관리자가 된 직후 명령 실행, 다른 계정 권한으로 관리자 명령 실행, 관리자 권한으로 바뀐 세션과 낯선 주소의 결합을 강한 수업용 신호로 본다. 처음 보는 명령만 있거나 평소 주소의 단발 관리자 명령, 취소·실패·후속 명령 없는 권한 상승, 계정 종류 조회는 확인용 알림으로 남긴다. 일반 세션 조회는 제외한다. 취약점 악용 증거 없이는 T1068을 확정하지 않으며 block은 수업용 대응 분류다.",
     "evidence": "MITRE ATT&CK T1068은 소프트웨어 취약점 악용을 통한 권한 상승을 설명한다; 상승 후 관리자 명령은 결과를 살피는 보조 신호이며 명령 실행만으로 취약점 악용을 입증하지 않는다: https://attack.mitre.org/techniques/T1068/"
   },
   {
@@ -43,11 +43,15 @@ export function decide(alert) {
   const unfamiliarCommand = /처음 보는 관리자 명령|평소와 다른 관리자 명령|낯선 관리자 명령/.test(description);
   const offHours = /(?:업무|수업) 시간 밖|업무처럼 보이지 않는 시각/.test(description);
   const remote = /원격 주소/.test(description);
+  const multipleAccounts = /같은 주소/.test(description)
+    && /계정\s*(?:[2-9]|[1-9]\d+)개/.test(description);
+  const rejoined = /빠진 계정|제거된 계정/.test(description)
+    && /(?:[1-5]분 뒤|곧바로|직후).*다시 관리자/.test(description);
 
   // 그룹 변경에 대한 직접 서술이 필요하며 그룹 이름이나 수준만으로 판단하지 않습니다.
   if (added) {
     if (groupConflict) match(0, 0.5);
-    else if (remote || command) match(0, 0.9);
+    else if (remote || command || multipleAccounts || rejoined) match(0, 0.9);
     else match(0, 0.65);
   }
 
@@ -55,12 +59,17 @@ export function decide(alert) {
   const exploitation = /취약점.*악용|취약점.*이용해/.test(description)
     && !/악용.*없|악용.*미확인|악용.*확인되지|악용하지 않/.test(description);
   if (command && (elevated || unfamiliarCommand || /다른 계정의 권한/.test(description))) {
-    match(1, elevated && exploitation ? 0.95 : 0.7);
+    match(1, groupConflict ? 0.5 : elevated && exploitation ? 0.95
+      : elevated || /다른 계정의 권한/.test(description) ? 0.9 : 0.7);
   } else if (/권한 상승/.test(description) || (elevated && unfamiliarAddress)) {
-    match(1, unsuccessful ? 0.5 : 0.6);
+    match(1, unsuccessful ? 0.5 : elevated && unfamiliarAddress ? 0.9 : 0.6);
   } else if (/관리자 명령/.test(description) && unsuccessful) {
     match(1, 0.5);
   }
+
+  // 약한 변경 신호는 차단하지 않습니다. 단순 로그인·그룹/세션 조회와 구분합니다.
+  if (/과제 그룹에 추가|새 로컬 그룹.*만들|그룹 설명만 바뀌/.test(description)) match(0, 0.5);
+  if (/계정 종류를 조회/.test(description) || command) match(1, 0.5);
 
   // 업무 시간은 설명의 명시적 신호만 사용하고 시각·IP로 추정하지 않습니다.
   if (offHours && (command || elevated || added)) {
