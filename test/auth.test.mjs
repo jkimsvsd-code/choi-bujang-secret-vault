@@ -58,17 +58,18 @@ test('server rejects invalid input, unsupported methods, missing config and fail
   assert.equal(JSON.stringify(denied.body).includes('must never escape'), false);
 });
 
-test('browser uses server Auth, restores and refreshes session, then clears it on logout', async () => {
-  const storage = new Map();
+test('browser keeps tokens only in memory, refreshes and clears on logout', async () => {
+  const storage = new Map([['vault-session-v1', 'legacy-token-must-not-be-read']]);
+  let refreshTimer;
   const requests = [];
   const events = [];
   let focused;
   const source = readFileSync(new URL('../public/auth-client.js', import.meta.url), 'utf8')
     .replace('export function', 'function');
   const create = vm.runInNewContext(source + '; createAuthClient', {
-    localStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) },
+    localStorage: { getItem() { assert.fail('must not read persisted tokens'); }, setItem() { assert.fail('must not persist tokens'); }, removeItem: k => storage.delete(k) },
     navigator: {}, window: { addEventListener: (name, fn) => { if (name === 'focus') focused = fn; } },
-    setTimeout: () => 1, clearTimeout() {}, AbortSignal,
+    setTimeout: fn => { refreshTimer = fn; return 1; }, clearTimeout() {}, AbortSignal,
     fetch: async (url, options) => {
       assert.equal(url, '/api/auth');
       const body = JSON.parse(options.body);
@@ -82,11 +83,17 @@ test('browser uses server Auth, restores and refreshes session, then clears it o
   assert.equal(login.error, null);
   assert.equal(events[0], null);
   assert.equal(events.at(-1).user.id, session.user.id);
-  storage.set('vault-session-v1', JSON.stringify({ ...session, expires_at: 0 }));
+  const expiry = session.expires_at;
+  session.expires_at = 0;
   focused();
   // Logout queues behind restore/refresh, so a late refresh cannot restore a logged-out session.
   assert.equal((await client.auth.signOut()).error, null);
+  session.expires_at = expiry;
   assert.deepEqual(requests, ['login', 'refresh', 'logout']);
+  const freshEvents = [];
+  create().auth.onAuthStateChange((_event, value) => freshEvents.push(value));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(freshEvents.at(-1), null);
   assert.equal(storage.size, 0);
   assert.equal(events.at(-1), null);
 });

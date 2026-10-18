@@ -1,13 +1,11 @@
 // Browser talks only to our server. No Supabase project key or SDK is shipped.
 export function createAuthClient() {
-  const storageKey = 'vault-session-v1';
+  // Remove legacy persisted tokens without reading or restoring their contents.
+  try { localStorage.removeItem('vault-session-v1'); } catch { /* Storage may be blocked. */ }
   let listener;
   let timer;
   let memory = null;
-  const read = () => {
-    try { return JSON.parse(localStorage.getItem(storageKey)); }
-    catch { return memory; }
-  };
+  const read = () => memory;
   const notify = session => {
     clearTimeout(timer);
     listener?.('SESSION', session);
@@ -16,16 +14,12 @@ export function createAuthClient() {
   };
   const save = session => {
     memory = session;
-    try {
-      if (session) localStorage.setItem(storageKey, JSON.stringify(session));
-      else localStorage.removeItem(storageKey);
-    } catch { /* Keep a working in-memory session if storage is unavailable. */ }
     notify(session);
   };
-  // Serialize refresh, login and logout across tabs to avoid refresh-token races.
+  // Serialize operations within this tab; sessions are never shared across tabs.
   let pending = Promise.resolve();
   const locked = task => {
-    const run = () => navigator.locks ? navigator.locks.request(storageKey, task) : task();
+    const run = task;
     const result = pending.then(run, run);
     pending = result.catch(() => {});
     return result;
@@ -62,9 +56,6 @@ export function createAuthClient() {
       }
     });
   }
-  window.addEventListener('storage', event => {
-    if (event.key === storageKey || event.key === null) void restore();
-  });
   window.addEventListener('focus', () => void restore());
   return { auth: {
     onAuthStateChange(callback) { listener = callback; void restore(); },
