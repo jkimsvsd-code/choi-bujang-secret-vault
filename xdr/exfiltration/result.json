@@ -1,0 +1,191 @@
+{
+  "schema": "aleph.xdr.result.v1",
+  "moduleKey": "exfiltration",
+  "decisions": [
+    {
+      "alertId": "ex-01",
+      "action": "block",
+      "confidence": 0.9,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-02",
+      "action": "block",
+      "confidence": 0.9,
+      "reason": "업무 시간 밖 압축 파일 반출"
+    },
+    {
+      "alertId": "ex-03",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-04",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-05",
+      "action": "block",
+      "confidence": 0.9,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-06",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "업무 시간 밖 압축 파일 반출"
+    },
+    {
+      "alertId": "ex-07",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-08",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-09",
+      "action": "block",
+      "confidence": 0.9,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-10",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-11",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-12",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-13",
+      "action": "record",
+      "confidence": 0.25,
+      "reason": "업무 시간 밖 압축 파일 반출"
+    },
+    {
+      "alertId": "ex-14",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-15",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-16",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-17",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-18",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-19",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-20",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "처음 보는 목적지로 대용량 전송"
+    },
+    {
+      "alertId": "ex-21",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-22",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-23",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-24",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-25",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-26",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-27",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-28",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-29",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ex-30",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    }
+  ],
+  "counts": {
+    "block": 4,
+    "alert": 10,
+    "record": 16
+  }
+}
