@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (![1, 2, 4, 5].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
+  if (![1, 2, 4, 5, 6].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try {
     app = new URL(config.publicAppUrl);
@@ -13,7 +13,7 @@ export async function runAttackChecks(config) {
     throw new Error('aleph.config.json의 실제 배포 주소를 먼저 넣어 주세요.');
   }
   if (typeof config.sampleMarker !== 'string' || !config.sampleMarker) throw new Error('가상 메모의 확인 표시를 넣어 주세요.');
-  if (config.step === 2 || config.step === 4 || config.step === 5) {
+  if (config.step === 2 || config.step === 4 || config.step >= 5) {
     // Record only status and counts, never response bodies or raw network errors.
     const check = async (path, attackId, expected, inspect) => {
       let response;
@@ -74,7 +74,7 @@ export async function runAttackChecks(config) {
       });
     if (config.step >= 4) {
       const original = [];
-      if (config.step === 5) {
+      if (config.step >= 5) {
         const origin = new URL(config.originalApiUrl);
         if (origin.protocol !== 'https:' || origin.username || origin.password || origin.search || origin.hash) {
           throw new Error('originalApiUrl은 인증정보·쿼리 없는 HTTPS 주소여야 합니다.');
@@ -86,6 +86,10 @@ export async function runAttackChecks(config) {
       // No credentials are read or stored. Authenticated and write operations
       // remain explicitly unexecuted until the student verifies them.
       return [api, staticFile, ...original,
+        ...(config.step === 6 ? [
+          { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: "미실행: 실제 등록 기기 접속 미검증. 로컬 가상 요청 연습과 구분" },
+          { attackId: "unregistered_device_read", expected: "미등록 기기 접근 거부", observed: "미실행: 미등록 기기 공격은 심판 담당. 자기 점검에서 공격하지 않음" },
+        ] : []),
         { attackId: 'owner_crud',
           expected: 'A/B 각각 본인 목록·한 건 GET 200, POST 201, PUT 200, DELETE 204',
           observed: '미실행: 실제 계정의 정상 CRUD는 사용자가 직접 검증 예정' },
@@ -99,7 +103,7 @@ export async function runAttackChecks(config) {
           expected: '비로그인 개별 GET 및 POST·PUT·DELETE는 HTTP 401',
           observed: '미실행: 이 자기 점검은 자격증명 없는 읽기 요청만 전송함' },
         { attackId: 'database_rls',
-          expected: config.step === 5
+          expected: config.step >= 5
             ? 'PUBLIC·anon·authenticated 직접 권한 없음, service_role CRUD 유지, 원본 직접 읽기·쓰기 거부'
             : 'anon 권한 없음, authenticated CRUD 및 auth.uid() 소유자 제한',
           observed: '미실행: SQL 적용과 DB 권한·RLS 검증은 사용자가 직접 수행 예정' },
