@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "policy:backup": "node scripts/policy-backup.mjs",
     "build": "node scripts/build-public.mjs",
     "test:r5": "node --test test/r5.test.mjs",
     "test:package": "node --test test/package-starter.test.mjs",
