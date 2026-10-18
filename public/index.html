@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BYTE BACK | 점령된 자료실</title>
+  <title>최 부장 자료실</title>
+  <meta name="theme-color" content="#101a28">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icon-192.png">
   <style>
     :root { color-scheme: dark; font-family: system-ui, sans-serif; }
     body { margin: 0; min-height: 100vh; background: #101a28; color: #ecf4ff; }
@@ -32,9 +35,19 @@
 <body>
   <main>
     <div class="eyebrow">BYTE BACK · 로그인 자료실</div>
-    <h1>점령된 자료실</h1>
+    <h1>최 부장 자료실</h1>
     <p>아래 기록은 모두 실습을 위해 만든 가상 자료입니다.</p>
     <div class="notice">로그인한 뒤 자료를 볼 수 있습니다. 로그아웃하면 화면의 자료가 지워집니다.</div>
+    <section class="auth-panel" aria-labelledby="app-heading">
+      <h2 id="app-heading">내 자료실 앱</h2>
+      <p id="install-status" role="status">브라우저에서 사용 중입니다.</p>
+      <button id="install-app" type="button" hidden>자료실 앱 설치</button>
+      <p>브라우저 메뉴의 ‘앱 설치’ 또는 ‘홈 화면에 추가’를 사용할 수 있습니다. 지원 여부는 브라우저마다 다릅니다.</p>
+      <p id="device-status">기기 승인: 확인 불가 — 승인 정보 연결 전</p>
+      <p>앱 설치와 로그인만으로 기기 확인이 완료되지 않습니다. 자료 접근은 기존 서버와 운영 엔진의 검사를 따릅니다.</p>
+      <p id="connection-status" role="status">연결 상태 확인 중…</p>
+      <p>오프라인에서는 자료 조회·저장을 할 수 없습니다. 연결을 복구한 뒤 다시 시도해 주세요. 요청은 자동으로 재전송하지 않습니다.</p>
+    </section>
     <section class="auth-panel" aria-labelledby="auth-heading">
       <h2 id="auth-heading">자료실 로그인</h2>
       <p id="auth-status" role="status">로그인 상태 확인 중…</p>
@@ -62,6 +75,7 @@
     </section>
     <ul id="notes" aria-live="polite"><li>자료를 보려면 로그인해 주세요.</li></ul>
   </main>
+  <script type="module" src="/app-status.js"></script>
   <script type="module">
     const form = document.querySelector('#login-form');
     const email = document.querySelector('#login-email');
