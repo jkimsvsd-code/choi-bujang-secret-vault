@@ -1,7 +1,30 @@
 // ALEPH SDP 엔진이 확인한 요청만 받는 학생 판정기 시작점입니다.
 // 등록 기기의 자료실 읽기만 허용하고, 그 밖의 요청은 기본 거부합니다.
 // 요청 본문의 userId, role, 기기 키, 토큰을 별도로 믿거나 저장하지 마세요.
-export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'connection_input', 'step_up_required']);
+export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'connection_input', 'step_up_required', 'resource_zones']);
+
+// Explicit engine/API route pairs; never choose an operation from a query.
+// IDs are opaque single path segments, not necessarily UUIDs. Ownership stays in the API.
+function readableZone(request) {
+  if (request.method !== 'GET' || request.queryLength !== 0) return null;
+  for (const prefix of ['', '/api']) {
+    if (request.service === 'notices' && request.path === `${prefix}/notices`
+      && request.route === `GET ${prefix}/notices`) return 'notices';
+    const base = `${prefix}/notes/`;
+    if (request.service !== 'notes' || request.route !== `GET ${base}:id`
+      || typeof request.path !== 'string' || !request.path.startsWith(base)) continue;
+    let id;
+    try { id = decodeURIComponent(request.path.slice(base.length)); }
+    catch { continue; }
+    // No nested paths, URL delimiters, ambiguous decoding or reserved export operation.
+    if (!id || /[\/\\?#%\u0000-\u0020\u007f]/u.test(id)
+      || id === '.' || id === '..' || id.toLowerCase() === 'export') continue;
+    return 'notes';
+  }
+  // Instructor materials, admin routes and unknown services/paths are never allowed here.
+  // Instructor notice editing belongs to a separately authorized server management route.
+  return null;
+}
 
 // 이 검사는 엔진 전용 호출 경계 안에서만 유효합니다. source 문자열 자체는
 // 인증 증거가 아니며 클라이언트 헤더·본문을 이 입력으로 변환하지 않습니다.
@@ -59,10 +82,11 @@ export async function decide(request) {
     };
   }
 
-  if (request.service === 'notes' && request.method === 'GET') {
+  const zone = readableZone(request);
+  if (zone !== null) {
     // 기존 가상 사건의 risk_signal을 다량 조회 신호로 사용합니다.
     // 실제 위치·개인별 평소 시각을 추정하지 않고 지역은 조건에서 제외합니다.
-    const compoundRisk = connection.source === 'judge_fixture'
+    const compoundRisk = zone === 'notes' && connection.source === 'judge_fixture'
       && connection.hour < 6
       && connection.network === 'unusual'
       && connection.recentEvents.some(event => event.kind === 'risk_signal'
@@ -87,7 +111,7 @@ export async function decide(request) {
       requestId: request.requestId,
       decision: 'allow',
       reasonCode: 'approved',
-      ruleIds: ['device_registered'],
+      ruleIds: ['device_registered', 'resource_zones'],
     };
   }
 
@@ -96,6 +120,6 @@ export async function decide(request) {
     requestId: request.requestId,
     decision: 'deny',
     reasonCode: 'starter_not_ready',
-    ruleIds: [RULE_IDS[0]],
+    ruleIds: [RULE_IDS[0], 'resource_zones'],
   };
 }

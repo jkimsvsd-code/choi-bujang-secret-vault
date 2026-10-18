@@ -9,6 +9,9 @@ const columns = 'note_id,title,content';
 const toNote = row => ({ id: row.note_id, title: row.title, body: row.content });
 
 export default async function handler(req, res) {
+  // Assigned by this server route, never by client headers, query or body.
+  req.resourceId = 'notes';
+  res.setHeader('X-Resource-Id', req.resourceId);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
