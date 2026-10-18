@@ -10,6 +10,7 @@ const userB = '22222222-2222-4222-8222-222222222222';
 const givenId = '33333333-3333-4333-8333-333333333333';
 function fixture() {
   const rows = new Map();
+  const denials = [];
   let dbCalls = 0;
   const table = () => {
     dbCalls++;
@@ -38,7 +39,7 @@ function fixture() {
   const source = readFileSync(new URL('../api/notes.js', import.meta.url), 'utf8')
     .replace(/^import .*;\r?\n/gm, '').replace('export default async function handler', 'async function handler');
   const handler = vm.runInNewContext(source + '; handler', {
-    randomUUID, config: {},
+    randomUUID, config: {}, console: { warn: message => denials.push(message) },
     process: { env: { SUPABASE_URL: 'https://fixture.supabase.co', SUPABASE_SERVICE_ROLE_KEY: 'fixture-only' } },
     createLoginVerifier: () => async value => value === 'Bearer fixture-a' ? { userId: userA }
       : value === 'Bearer fixture-b' ? { userId: userB } : null,
@@ -51,8 +52,27 @@ function fixture() {
       query: { ...query, ...(id !== undefined ? { id } : {}) }, body }, res);
     return res;
   }
-  return { request, rows, dbCalls: () => dbCalls };
+  return { request, rows, denials, dbCalls: () => dbCalls };
 }
+
+test('direct API calls cannot bypass stored owner or zone with an instructor role', async () => {
+  const { request, rows, denials } = fixture();
+  for (const [owner_id, sample_marker] of [[userB, 'SAMPLE_NOTE_1'], [userA, 'INSTRUCTOR_ONLY']]) {
+    rows.set(givenId, { note_id: givenId, owner_id, sample_marker, title: 'private fixture', content: 'private fixture' });
+    const original = { ...rows.get(givenId) };
+    for (const method of ['GET', 'PUT', 'DELETE']) {
+      const result = await request(method, { id: givenId,
+        query: { role: 'instructor', owner_id, resourceId: 'notes' },
+        body: { role: 'instructor', owner_id: userA, sample_marker: 'SAMPLE_NOTE_1', title: 'changed', body: 'changed' } });
+      assert.equal(result.code, 404);
+      assert.equal(result.headers['X-Denial-Reason'], 'note_unavailable');
+      assert.deepEqual(result.body, { error: 'Note not found' });
+      assert.deepEqual(rows.get(givenId), original);
+    }
+    assert.deepEqual((await request('GET', { query: { role: 'instructor' } })).body, []);
+  }
+  assert.deepEqual(denials, Array(6).fill('api_denied resource=notes reason=note_unavailable'));
+});
 
 test('A CRUD, generated UUID, owner binding, list isolation and deleted GET 404', async () => {
   const { request, rows } = fixture();

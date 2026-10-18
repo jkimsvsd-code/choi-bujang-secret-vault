@@ -14,17 +14,23 @@ export default async function handler(req, res) {
   res.setHeader('X-Resource-Id', req.resourceId);
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  const deny = (status, reason, error) => {
+    // Fixed codes only: no identity, request URL, credentials or note contents.
+    console.warn(`api_denied resource=notes reason=${reason}`);
+    res.setHeader('X-Denial-Reason', reason);
+    return res.status(status).json({ error });
+  };
 
   const itemRoute = req.noteItemRoute === true;
   const methods = itemRoute ? ['GET', 'PUT', 'DELETE'] : ['GET', 'POST'];
   if (!methods.includes(req.method)) {
     res.setHeader('Allow', methods.join(', '));
-    return res.status(405).json({ error: 'Method not allowed' });
+    return deny(405, 'method_not_allowed', 'Method not allowed');
   }
 
   const authorization = req.headers?.authorization;
   if (typeof authorization !== 'string' || !authorization) {
-    return res.status(401).json({ error: 'Authentication required' });
+    return deny(401, 'authentication_required', 'Authentication required');
   }
 
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -41,10 +47,10 @@ export default async function handler(req, res) {
     verifyLogin ??= createLoginVerifier({ config, supabaseSecretKey: secretKey });
     identity = await verifyLogin(authorization);
   } catch {
-    return res.status(401).json({ error: 'Authentication failed' });
+    return deny(401, 'authentication_failed', 'Authentication failed');
   }
   if (!identity || !UUID.test(identity.userId ?? '')) {
-    return res.status(401).json({ error: 'Authentication failed' });
+    return deny(401, 'authentication_failed', 'Authentication failed');
   }
 
   const id = itemRoute ? req.query?.id : undefined;
@@ -98,7 +104,8 @@ export default async function handler(req, res) {
     if (req.method !== 'GET') query = query.select(columns);
     const { data, error } = await query.maybeSingle();
     if (error) return res.status(500).json({ error: 'Note operation failed' });
-    if (!data) return res.status(404).json({ error: 'Note not found' });
+    // Keep absent, foreign-owned and other-zone records indistinguishable.
+    if (!data) return deny(404, 'note_unavailable', 'Note not found');
     if (req.method === 'DELETE') return res.status(204).end();
     return res.status(200).json(toNote(data));
   } catch {

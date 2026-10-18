@@ -2,7 +2,17 @@
 
 Vercel, GitHub, Supabase로 가상 메모 자료실을 만들고 단계별로 접근 통제를 추가하는 알레프 방어전 실습 프로젝트입니다. 실제 개인정보나 민감한 자료는 사용하지 않습니다.
 
-**현재 진행: 7단계 「평소와 다른 접속은 다시 확인합니다」 — 운영 심판 100/100점 통과. 실제 재로그인 전 자료 차단·새 요청 허용 실측은 미실행.**
+**현재 진행: 8단계 「자료마다 갈 수 있는 구역을 나눕니다」 — 구역 규칙·API 권한 검사 구현. SQL 적용·강사 등록은 사용자 확인, 실제 강사 API 연동·8단계 심판 검증은 미실행.**
+
+## 8단계 구현 기록
+
+- 메모와 공지는 서버가 `notes`, `notices` 자원 ID로 지정합니다. 기존 메모·주소·화면 메뉴를 보존합니다. 판정기는 서비스·경로·경로 모양을 함께 검사하며 단일 메모 GET과 공지 목록 GET만 허용합니다. 메모 목록·쓰기, 공지 쓰기, 강사 자료, 알 수 없는 경로, 쿼리 요청과 export 기능 경로는 거부합니다. 기기 등록·입력 검사·복합 사건 추가 확인은 유지합니다. 구현 규칙은 `starter.deny`, `device_registered`, `connection_input`, `step_up_required`, `resource_zones`입니다.
+- 설정 단계는 8이며 `allowedRoutes`는 `GET /api/notes/:id`, `GET /api/notices` 두 개입니다. 기존 메모 API CRUD와 소유자 검사는 유지하지만 판정기 경유 허용 범위는 더 좁습니다. 서버 전용 강사 경로는 판정기 허용 목록에 넣지 않습니다. 로그인 issuer·audience·JWKS와 `judgeIssuer`, 원본 `learning_notes` API 주소는 유지합니다.
+- `supabase/step8_resource_permissions.sql`은 기존 메모를 변경하지 않고 `vault_instructors`, `learning_notices`, `instructor_materials`를 추가합니다. 사용자가 SQL 실행 성공과 강사 등록 완료를 보고했습니다. 에이전트가 실제 DB 상태를 조회한 결과는 아닙니다. 강사 권한은 DB 관리자만 등록하며 앱 서버는 권한표를 읽기만 합니다.
+- API는 검증된 Supabase 사용자 ID와 매 요청 조회한 `vault_instructors.active`를 대조합니다. 활성 강사는 `PUT /api/admin/notices/:id`로 공지 제목·내용만 수정하고 `GET /api/instructor/materials/:id`로 강사 자료를 읽습니다. 클라이언트 role은 무시하며, 권한 없음은 403, 권한표 조회 실패는 503입니다. 일반 `GET /api/notices`는 로그인 후 published=true인 공지만 반환합니다. 미공개 공지와 강사 자료는 별도 테이블로 분리합니다.
+- 거부 로그에는 고정 자원 이름·사유 코드만 남기고, `X-Denial-Reason` 헤더로도 표시합니다. 타인 메모와 없는 메모는 동일한 404입니다. 기존 메모 소유자·자료 구역 검사를 유지하며 사용자 ID·토큰·본문은 로그에 넣지 않습니다.
+- 재실행: `node --test test/instructor-api.test.mjs test/notes-crud.test.mjs test/resources.test.mjs test/decider-zones.test.mjs test/decider-input.test.mjs test/decider-compound.test.mjs test/auth.test.mjs`. 로컬 모의 테스트 26개 통과. 정상 본인 CRUD·활성 강사 조회/수정은 허용, 타인 메모·위조 강사 역할·회수된 권한은 거부되어야 합니다. 터미널 검사에는 화면 클릭이 없습니다. 배포 후 Vercel → Deployments → 해당 배포 → Visit, 개발자 도구 → Network → Headers에서 응답을 확인합니다.
+- 운영 주소는 `https://choi-bujang-secret-vault-okfv.vercel.app/`입니다. 이 기록 커밋의 배포 결과는 커밋 시점에 미확인입니다. 실제 강사 성공·일반 사용자 거부·DB 권한·심판 검증은 로컬 모의 테스트와 구분하며 아직 미실행입니다. 아래 7단계 및 이전 기록은 당시 상태입니다.
 
 ## 7단계 저장점 (2026-10-18)
 
