@@ -1,7 +1,8 @@
-// 9단계에서 학생이 채우는 탐지 함수입니다. 이 기본값은 어떤 접속도 회수하지 않습니다.
+// 9단계 탐지 함수입니다. 회수를 제안하며 직접 접속을 회수하지 않습니다.
 // 반 엔진이 검증한 사건만 전달해야 하며, 브라우저가 보낸 사용자 번호는 받지 않습니다.
 export function detect(events) {
   if (!Array.isArray(events)) throw new TypeError('invalid_detection_events');
+  const readsBySubject = new Map();
   for (const event of events) {
     // 사건 전체를 복사하거나 기록하지 않고 계약의 세 값만 읽습니다.
     const at = event?.at;
@@ -12,7 +13,21 @@ export function detect(events) {
       || typeof sub !== 'string' || sub.trim().length === 0) {
       throw new TypeError('invalid_detection_events');
     }
+    if (method === 'GET') {
+      if (!readsBySubject.has(sub)) readsBySubject.set(sub, []);
+      readsBySubject.get(sub).push(Date.parse(at));
+    }
   }
-  // 이번 단계는 입력 확인만 수행하며 폭주 판정·회수 제안은 추가하지 않습니다.
+  for (const [subject, times] of readsBySubject) {
+    // 입력 순서와 무관하게 사용자별 시각을 정렬하고 10분 창을 이동합니다.
+    times.sort((a, b) => a - b);
+    let left = 0;
+    for (let right = 0; right < times.length; right += 1) {
+      while (times[right] - times[left] > 10 * 60 * 1000) left += 1;
+      if (right - left + 1 > 120) {
+        return { action: 'propose_revocation', reasonCode: 'burst_read', subject };
+      }
+    }
+  }
   return { action: 'observe' };
 }
