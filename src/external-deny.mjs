@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 
 export const rulesUrl = new URL('../xdr/web-injection/deny-rules.json', import.meta.url);
+export const knownCveRulesUrl = new URL('../xdr/known-cve/deny-rules.json', import.meta.url);
 export const TTL_MS = 15 * 60 * 1000;
 const fields = ['schema', 'requestId', 'classId', 'projectId', 'subjectId', 'deviceId',
   'service', 'method', 'path', 'route', 'queryLength', 'querySha256', 'at', 'policyRevision'];
@@ -21,16 +22,26 @@ export function alertFingerprint(alert) {
   return createHash('sha256').update(JSON.stringify(alert)).digest('hex');
 }
 
-export async function matchesExternalDeny(request, { file = rulesUrl, now = Date.now() } = {}) {
+export async function matchesExternalDeny(request, { file, now = Date.now() } = {}) {
   const fingerprint = requestFingerprint(request);
   if (!fingerprint) return false;
+  // 각 모듈의 전용 파일을 독립적으로 읽습니다. 한 파일의 누락은 다른 규칙을 지우지 않습니다.
+  const sources = file ? [[file, /^(?:wi|kc)-\d{1,6}$/]]
+    : [[rulesUrl, /^wi-\d{1,6}$/], [knownCveRulesUrl, /^kc-\d{1,6}$/]];
+  for (const [source, evidenceId] of sources) {
+    if (await matchesFile(source, evidenceId, fingerprint, now)) return true;
+  }
+  return false;
+}
+
+async function matchesFile(file, evidenceId, fingerprint, now) {
   try {
     const data = JSON.parse(await readFile(file, 'utf8'));
     if (data.schema !== 'aleph.xdr.exact-request-deny.v1' || !Array.isArray(data.rules)) return false;
     return data.rules.some(rule => {
       const start = Date.parse(rule.createdAt);
       const end = Date.parse(rule.expiresAt);
-      return /^wi-\d{1,6}$/.test(rule.evidenceAlertId)
+      return evidenceId.test(rule.evidenceAlertId)
         && rule.requestFingerprint === fingerprint && /^[a-f0-9]{64}$/.test(rule.alertFingerprint)
         && Number.isFinite(start) && Number.isFinite(end) && start <= now && now < end
         && end > start && end - start <= TTL_MS;
