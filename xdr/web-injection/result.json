@@ -34,9 +34,9 @@
     },
     {
       "alertId": "wi-06",
-      "action": "record",
-      "confidence": 0,
-      "reason": "일치하는 근거 패턴 없음"
+      "action": "block",
+      "confidence": 0.9,
+      "reason": "요청 인자의 명령 구분자 삽입"
     },
     {
       "alertId": "wi-07",
@@ -160,8 +160,8 @@
     }
   ],
   "counts": {
-    "block": 7,
+    "block": 8,
     "alert": 2,
-    "record": 17
+    "record": 16
   }
 }
