@@ -6,6 +6,13 @@ Vercel, GitHub, Supabase로 가상 메모 자료실을 만들고 단계별로 �
 
 ## 10단계 B 임시 메모 한 건 복원
 
+### 10단계 저장점
+
+- 설정 `step=10`, `restoreRoute=/api/restore-note`를 POST 구현과 대조했습니다. 기존 로그인 issuer·audience·JWKS 검증 연결, 원본 `learning_notes` API, 단일 메모 GET·공지 GET 허용 경로와 RULE_IDS의 실제 구현 다섯 규칙을 확인했습니다. `judgeIssuer`와 기존 정책은 유지합니다. 운영 서버 환경변수 값과 이번 커밋 배포는 미확인입니다.
+- 정책 백업 해시 재검증과 모의 테스트 32개·판정기 가상 요청 4개·탐지 가상 사건 6개·계약 조합 1,296개 통과 기록을 유지합니다. 실제 관리자 DB 복원에서는 지정 B 메모의 ID·소유자·내용 해시 일치와 다른 메모·기존 감사 행·정책 정의 보존을 확인했습니다. 실제 B 로그인 POST·변조 사본 거부·기기·회수·심판 검증은 미실행입니다.
+- 재실행: 커밋 후 `npm.cmd run bundle`. 화면에서 생성된 `artifacts/submission.json`을 열어 step·commit·restoreRoute·attackAttempts를 확인합니다. 자기 점검은 인증정보·본문 없이 HTTP 8건을 보내며, 나머지 12항목은 미실행입니다. 정상 결과는 JSON 생성이고, 거부 기대 결과는 무인증 자료/복원 401·일반 공지 쓰기 405입니다. 생성 성공은 점검 전체 통과나 심판 통과가 아닙니다.
+- `bundle-notes.json`, `artifacts/`의 제출 JSON·스크린샷·사본은 커밋하지 않습니다. 제출 묶음에 메모 본문·실제 계정 정보·비밀값을 포함하지 않습니다.
+
 - 지정 ID: `92cd9cd2-589c-4e18-9e4c-3c9a2bd1aa69`. B 임시 가상 메모와 비공개 사본이 실제 DB에 생성된 것을 확인했습니다. 실제 계정 ID·이메일·본문은 README에 기록하지 않습니다.
 - 서비스: `notes_restore`. 경로: **`POST /api/restore-note`**. 인증된 Supabase 시험 계정 B만 DB에 고정된 복구 대상을 요청할 수 있습니다. 본문은 미리보기 `{ "id": "92cd9cd2-589c-4e18-9e4c-3c9a2bd1aa69", "mode": "preview" }`, 확인 후 복원은 같은 ID에 `mode: "restore"`, 미리보기의 `contentHash`를 전달합니다. 로그인 토큰은 기존 SDK 세션으로 전달하고 복사·기록하지 않습니다.
 - 기존 `notes` 서비스, 판정기와 `allowedRoutes`는 유지합니다. 이 서버 전용 POST는 기존 판정기 허용 경로에 포함되지 않습니다. 운영 엔진 연결이나 심판 통과를 의미하지 않습니다.

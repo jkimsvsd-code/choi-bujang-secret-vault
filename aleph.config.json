@@ -14,5 +14,5 @@
     "GET /api/notices"
   ],
   "originalApiUrl": "https://olcjokkxxsdksvvgkxzx.supabase.co/rest/v1/learning_notes",
-  "restoreRoute": null
+  "restoreRoute": "/api/restore-note"
 }

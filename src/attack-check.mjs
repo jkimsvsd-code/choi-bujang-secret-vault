@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (![1, 2, 4, 5, 6, 7, 8, 9].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
+  if (![1, 2, 4, 5, 6, 7, 8, 9, 10].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try {
     app = new URL(config.publicAppUrl);
@@ -101,9 +101,20 @@ export async function runAttackChecks(config) {
             }, method));
         }
       }
-      // No credentials or content are sent. Steps 8 and 9 send unauthenticated write
+      const recovery = [];
+      if (config.step >= 10) {
+        if (config.restoreRoute !== '/api/restore-note') throw new Error('구현된 복원 경로 /api/restore-note를 설정해 주세요.');
+        recovery.push(await check(config.restoreRoute, 'anonymous_restore_denied',
+          'POST /api/restore-note: 무인증 401, 복원 없음. B 로그인 복원·변조 사본 거부는 별도 시험',
+          (response, data) => {
+            const valid = response.status === 401 && data && !Array.isArray(data)
+              && Object.keys(data).length === 1 && data.error === 'authentication_required';
+            return `${valid ? '기대와 일치' : '기대와 다름'}: HTTP ${response.status}, 인증 필요 응답 ${valid ? '확인' : '미확인'}. B 로그인 복원·변조 사본 거부는 미실행`;
+          }, 'POST'));
+      }
+      // No credentials or content are sent. Steps 8–10 send unauthenticated write
       // probes with no body; authenticated mutations remain unexecuted.
-      return [api, staticFile, ...original, ...zones,
+      return [api, staticFile, ...original, ...zones, ...recovery,
         ...(config.step >= 6 ? [
           { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: "미실행: 실제 등록 기기 접속 미검증. 로컬 가상 요청 연습과 구분" },
           { attackId: "unregistered_device_read", expected: "미등록 기기 접근 거부", observed: "미실행: 미등록 기기 공격은 심판 담당. 자기 점검에서 공격하지 않음" },
