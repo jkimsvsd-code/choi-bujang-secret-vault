@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { randomUUID } from 'node:crypto';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { capture, simulate, planRestore, restoreTrial } from '../scripts/policy-backup.mjs';
 
 // In-memory API integration checks, not deployment or judge results.
 const userA = '11111111-1111-4111-8111-111111111111';
@@ -54,6 +59,35 @@ function fixture() {
   }
   return { request, rows, denials, dbCalls: () => dbCalls };
 }
+
+test('restored trial route keeps A read 200 and B access to A note 404 (mock API)', async () => {
+  const temporary = await mkdtemp(resolve(tmpdir(), 'vault-restore-api-'));
+  try {
+    const directory = resolve(temporary, 'baseline');
+    const root = fileURLToPath(new URL('../', import.meta.url));
+    const digest = await capture(root, directory, 'a'.repeat(40));
+    await simulate(directory, digest);
+    const plan = await planRestore(directory, digest);
+    await restoreTrial(directory, digest, plan.confirmation);
+    const restored = JSON.parse(await readFile(resolve(directory, 'trial.json')));
+    const routes = JSON.parse(restored['aleph.config.json#allowedRoutes']);
+    const { request, rows, denials } = fixture();
+    rows.set(givenId, { note_id: givenId, owner_id: userA, sample_marker: 'SAMPLE_NOTE_1', title: 'fixture', content: 'fixture' });
+    const original = { ...rows.get(givenId) };
+    // Use restored route configuration as the gate, then the existing API owner check.
+    async function throughTrial(auth) {
+      if (!routes.includes('GET /api/notes/:id')) return { code: 403 };
+      return request('GET', { id: givenId, auth });
+    }
+    assert.equal((await throughTrial('Bearer fixture-a')).code, 200);
+    assert.equal((await throughTrial('Bearer fixture-b')).code, 404);
+    assert.equal((await throughTrial('Bearer fixture-a')).code, 200);
+    assert.deepEqual(rows.get(givenId), original);
+    assert.equal(denials.length, 1);
+    assert(routes.includes('GET /api/notices'));
+    assert(!routes.includes('POST /api/notes/:id'));
+  } finally { await rm(temporary, { recursive: true, force: true }); }
+});
 
 test('direct API calls cannot bypass stored owner or zone with an instructor role', async () => {
   const { request, rows, denials } = fixture();

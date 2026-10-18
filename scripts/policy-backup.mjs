@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, open, rename, unlink, appendFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -98,11 +99,72 @@ export async function preview(directory, expectedHash) {
     ...changes.flatMap(key => [`--- ${key}`, ...differences(snapshot.policies[key], trial[key])])].join('\n');
 }
 
+// Only undo the simulated notes route replacement. Other services and policy
+// definitions are deliberately retained, even when they differ from baseline.
+export async function planRestore(directory, expectedHash) {
+  const snapshot = await verify(directory, expectedHash);
+  const before = await readFile(resolve(directory, 'trial.json'), 'utf8');
+  const trial = JSON.parse(before);
+  if (!trial || Array.isArray(trial) || !keys.every(key => typeof trial[key] === 'string')) {
+    throw new Error('invalid_trial_scope');
+  }
+  const safeRoutes = JSON.parse(snapshot.policies[routeKey]);
+  const routes = JSON.parse(trial[routeKey]);
+  const safe = 'GET /api/notes/:id', attacked = 'POST /api/notes/:id';
+  if (!Array.isArray(safeRoutes) || !safeRoutes.includes(safe) || safeRoutes.includes(attacked)
+    || !Array.isArray(routes) || !routes.every(value => typeof value === 'string')
+    || routes.filter(value => value === attacked).length !== 1 || routes.includes(safe)) {
+    throw new Error('unexpected_restore_scope');
+  }
+  routes[routes.indexOf(attacked)] = safe;
+  trial[routeKey] = json(routes);
+  const after = json(trial);
+  const confirmation = hash(json({ expectedHash, before: hash(before), after: hash(after) }));
+  return { before, after, confirmation, commit: snapshot.commit,
+    report: [`복원 기준: ${snapshot.commit} / 단계 ${snapshot.step}`,
+      `검증 SHA-256: ${expectedHash}`,
+      '대상: trial.json의 allowedRoutes 중 메모 한 건 경로 한 줄',
+      `- ${attacked}`, `+ ${safe}`,
+      '다른 서비스 규칙·DB 정의·기존 감사 이력은 보존합니다. 운영 정책은 변경하지 않습니다.',
+      `확인 코드: ${confirmation}`].join('\n') };
+}
+
+export async function restoreTrial(directory, expectedHash, confirmation) {
+  const lockPath = resolve(directory, 'restore.lock');
+  const lock = await open(lockPath, 'wx');
+  let temporary;
+  try {
+    const plan = await planRestore(directory, expectedHash);
+    if (!confirmation || confirmation !== plan.confirmation) throw new Error('confirmation_mismatch');
+    const id = randomUUID();
+    const event = { id, at: new Date().toISOString(), commit: plan.commit,
+      baselineHash: expectedHash, beforeHash: hash(plan.before), afterHash: hash(plan.after),
+      scope: 'trial.allowedRoutes: POST /api/notes/:id -> GET /api/notes/:id' };
+    // Never truncate audit history. An interrupted run leaves an intent event.
+    const audit = resolve(directory, 'restore-audit.jsonl');
+    await appendFile(audit, JSON.stringify({ ...event, status: 'intent' }) + '\n');
+    temporary = resolve(directory, `trial-${id}.tmp`);
+    await writeFile(temporary, plan.after, { flag: 'wx' });
+    await verify(directory, expectedHash);
+    if (await readFile(resolve(directory, 'trial.json'), 'utf8') !== plan.before) {
+      throw new Error('trial_changed_after_preview');
+    }
+    await rename(temporary, resolve(directory, 'trial.json'));
+    temporary = undefined;
+    await appendFile(audit, JSON.stringify({ ...event, status: 'complete' }) + '\n');
+    return '시험 정책 한 줄 복원 완료. 감사 이력에 추가 기록했습니다.';
+  } finally {
+    if (temporary) await unlink(temporary).catch(() => {});
+    await lock.close();
+    await unlink(lockPath);
+  }
+}
+
 async function main() {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-  const [command, name, expectedHash] = process.argv.slice(2);
-  if (!['capture', 'simulate', 'preview'].includes(command) || !/^[a-zA-Z0-9_-]+$/.test(name ?? '')) {
-    throw new Error('usage: policy:backup capture|simulate|preview NAME [TRUSTED_SHA256]');
+  const [command, name, expectedHash, flag, confirmation] = process.argv.slice(2);
+  if (!['capture', 'simulate', 'preview', 'restore-plan', 'restore'].includes(command) || !/^[a-zA-Z0-9_-]+$/.test(name ?? '')) {
+    throw new Error('usage: policy:backup capture|simulate|preview|restore-plan|restore NAME [TRUSTED_SHA256] [--confirm CODE]');
   }
   const parent = resolve(root, 'artifacts/policy-backups');
   const directory = resolve(parent, name);
@@ -119,6 +181,12 @@ async function main() {
     console.log('시험 사본만 생성: allowedRoutes의 GET /api/notes/:id → POST /api/notes/:id');
     await simulate(directory, expectedHash);
     console.log(await preview(directory, expectedHash));
+  } else if (command === 'restore-plan' || command === 'restore') {
+    console.log((await planRestore(directory, expectedHash)).report);
+    if (command === 'restore') {
+      if (flag !== '--confirm') throw new Error('confirmation_required: 먼저 restore-plan 결과를 확인하세요');
+      console.log(await restoreTrial(directory, expectedHash, confirmation));
+    }
   } else console.log(await preview(directory, expectedHash));
 }
 
