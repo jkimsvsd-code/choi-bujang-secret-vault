@@ -1,0 +1,155 @@
+{
+  "schema": "aleph.xdr.result.v1",
+  "moduleKey": "persistence",
+  "decisions": [
+    {
+      "alertId": "ps-01",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "서명 없는 새 서비스 등록"
+    },
+    {
+      "alertId": "ps-02",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "낯선 예약 작업 등록"
+    },
+    {
+      "alertId": "ps-03",
+      "action": "block",
+      "confidence": 0.9,
+      "reason": "시작 폴더의 낯선 프로그램 추가"
+    },
+    {
+      "alertId": "ps-04",
+      "action": "block",
+      "confidence": 0.9,
+      "reason": "서명 없는 새 서비스 등록"
+    },
+    {
+      "alertId": "ps-05",
+      "action": "block",
+      "confidence": 0.95,
+      "reason": "낯선 예약 작업 등록"
+    },
+    {
+      "alertId": "ps-06",
+      "action": "alert",
+      "confidence": 0.7,
+      "reason": "서명 없는 새 서비스 등록"
+    },
+    {
+      "alertId": "ps-07",
+      "action": "alert",
+      "confidence": 0.6,
+      "reason": "낯선 예약 작업 등록"
+    },
+    {
+      "alertId": "ps-08",
+      "action": "alert",
+      "confidence": 0.7,
+      "reason": "서명 없는 새 서비스 등록"
+    },
+    {
+      "alertId": "ps-09",
+      "action": "alert",
+      "confidence": 0.6,
+      "reason": "낯선 예약 작업 등록"
+    },
+    {
+      "alertId": "ps-10",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "시작 폴더의 낯선 프로그램 추가"
+    },
+    {
+      "alertId": "ps-11",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-12",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "낯선 예약 작업 등록"
+    },
+    {
+      "alertId": "ps-13",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-14",
+      "action": "alert",
+      "confidence": 0.55,
+      "reason": "시작 폴더의 낯선 프로그램 추가"
+    },
+    {
+      "alertId": "ps-15",
+      "action": "alert",
+      "confidence": 0.5,
+      "reason": "낯선 예약 작업 등록"
+    },
+    {
+      "alertId": "ps-16",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-17",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-18",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-19",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-20",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-21",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-22",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-23",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    },
+    {
+      "alertId": "ps-24",
+      "action": "record",
+      "confidence": 0,
+      "reason": "일치하는 근거 패턴 없음"
+    }
+  ],
+  "counts": {
+    "block": 5,
+    "alert": 8,
+    "record": 11
+  }
+}
