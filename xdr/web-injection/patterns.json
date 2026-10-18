@@ -1,0 +1,20 @@
+{
+  "technique": "T1190",
+  "patterns": [
+    {
+      "name": "요청 인자의 SQL 구문 삽입",
+      "condition": "요청 인자에 SQL 문장을 이어 붙이거나 조회 조건을 바꾸는 구문 조합이 있는지 확인한다. SQL 또는 select라는 수업명, 따옴표 하나만으로 공격으로 단정하지 않는다. 같은 출발 주소의 반복 요청은 경보에 명시된 횟수로만 보조 판단하며, 문서용 doc-* 표기를 실제 공격 구문으로 해석하지 않는다.",
+      "evidence": "MITRE ATT&CK T1190은 외부 공개 앱 악용을 설명하고 Agrius·APT28 등의 SQL injection 사례를 명시한다; 이 조건은 해당 사례를 참고한 관찰 신호이며 공격 성공이나 공식 탐지 임계값을 뜻하지 않는다: https://attack.mitre.org/techniques/T1190/"
+    },
+    {
+      "name": "요청 인자의 스크립트 태그 삽입",
+      "condition": "요청 인자에 <script> 같은 실제 스크립트 태그 형태가 있거나 경보 설명에 스크립트 삽입 표식이 명시되어 있는지 확인한다. script라는 수업 단어·정상 코드 예제와 구별하고, 같은 출발 주소의 반복 여부를 보조 신호로 본다. 태그 존재만으로 실행 성공이나 초기 접근 성공을 단정하지 않는다.",
+      "evidence": "T1190의 웹 취약점 악용 맥락을 참고하되 스크립트 입력의 직접 근거는 MITRE CWE-79의 HTTP 요청 반영형 XSS 설명이다; 모든 XSS를 T1190으로 확정하지 않는다: https://attack.mitre.org/techniques/T1190/ 및 https://cwe.mitre.org/data/definitions/79.html"
+    },
+    {
+      "name": "요청 인자의 상위 경로 이동 반복",
+      "condition": "파일·경로 요청 인자 안에서 ../가 반복되어 여러 상위 디렉터리로 이동하려는 형태인지 확인한다. 한 인자 안의 ../ 반복과 같은 출발 주소의 요청 반복 횟수는 구분한다. up이라는 단어 하나나 정상 상대 경로만으로 공격을 단정하지 않으며, 횟수 임계값을 임의로 정하지 않는다.",
+      "evidence": "MITRE ATT&CK T1190의 C0017 사례는 초기 접근에 directory traversal 취약점을 악용한 사실을 명시한다; ../ 반복은 이 과제의 관찰 신호이며 MITRE가 정한 차단 횟수 기준은 아니다: https://attack.mitre.org/techniques/T1190/"
+    }
+  ]
+}
