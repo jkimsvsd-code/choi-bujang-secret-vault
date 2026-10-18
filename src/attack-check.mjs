@@ -1,7 +1,7 @@
 // The student changes this check as each stage adds an attack to the same app.
 // Never return tokens, private keys, real names, or note bodies.
 export async function runAttackChecks(config) {
-  if (![1, 2, 4, 5, 6].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
+  if (![1, 2, 4, 5, 6, 7].includes(config.step)) throw new Error('이 단계의 공격 점검을 src/attack-check.mjs에 구현해 주세요.');
   let app;
   try {
     app = new URL(config.publicAppUrl);
@@ -86,9 +86,13 @@ export async function runAttackChecks(config) {
       // No credentials are read or stored. Authenticated and write operations
       // remain explicitly unexecuted until the student verifies them.
       return [api, staticFile, ...original,
-        ...(config.step === 6 ? [
+        ...(config.step >= 6 ? [
           { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: "미실행: 실제 등록 기기 접속 미검증. 로컬 가상 요청 연습과 구분" },
           { attackId: "unregistered_device_read", expected: "미등록 기기 접근 거부", observed: "미실행: 미등록 기기 공격은 심판 담당. 자기 점검에서 공격하지 않음" },
+        ] : []),
+        ...(config.step === 7 ? [
+          { attackId: 'compound_access_step_up', expected: '복합 가상 사건은 step_up, 정상 가상 사건은 allow', observed: '미실행: 이 HTTP 자기 점검에서는 가상 판정기를 호출하지 않음. 별도 로컬 연습과 구분' },
+          { attackId: 'reauthentication_gate', expected: '계약이 준비된 환경에서만 재로그인 전 자료 차단과 같은 주체의 새 로그인 후 요청 재판정·허용 실측', observed: '미실행: 제공 계약에서 같은 주체의 추가 확인 요청 이후 재로그인 시각 검증을 확인하지 못함. 실제 자료 차단·새 요청 허용 미검증' },
         ] : []),
         { attackId: 'owner_crud',
           expected: 'A/B 각각 본인 목록·한 건 GET 200, POST 201, PUT 200, DELETE 204',
