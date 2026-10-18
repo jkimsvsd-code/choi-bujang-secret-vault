@@ -1,7 +1,8 @@
 // ALEPH SDP 엔진이 확인한 요청만 받는 학생 판정기 시작점입니다.
 // 등록 기기의 자료실 읽기만 허용하고, 그 밖의 요청은 기본 거부합니다.
 // 요청 본문의 userId, role, 기기 키, 토큰을 별도로 믿거나 저장하지 마세요.
-export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'connection_input', 'step_up_required', 'resource_zones']);
+import { matchesExternalDeny } from './external-deny.mjs';
+export const RULE_IDS = Object.freeze(['starter.deny', 'device_registered', 'connection_input', 'step_up_required', 'resource_zones', 'external_deny']);
 
 // Explicit engine/API route pairs; never choose an operation from a query.
 // IDs are opaque single path segments, not necessarily UUIDs. Ownership stays in the API.
@@ -60,7 +61,7 @@ export function inspectConnectionInput(request) {
   };
 }
 
-export async function decide(request) {
+async function decideExisting(request) {
   if (request.deviceRegistered !== true) {
     return {
       schema: 'aleph.decision.v1',
@@ -122,4 +123,11 @@ export async function decide(request) {
     reasonCode: 'starter_not_ready',
     ruleIds: [RULE_IDS[0], 'resource_zones'],
   };
+}
+
+export async function decide(request) {
+  const result = await decideExisting(request);
+  if (result.decision !== 'allow' || !await matchesExternalDeny(request)) return result;
+  return { schema: result.schema, requestId: result.requestId, decision: 'deny',
+    reasonCode: 'starter_not_ready', ruleIds: ['external_deny'] };
 }
