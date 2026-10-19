@@ -20,7 +20,7 @@ export async function runAttackChecks(config) {
       if (!['GET', 'HEAD'].includes(method)) return { attackId, expected, observed: 'not_run' };
       let response;
       try {
-        response = await fetch(new URL(path, app), {
+        response = await fetch(new URL(path, app).href, {
           method, redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(10000),
         });
       } catch {
