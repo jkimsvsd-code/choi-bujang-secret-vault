@@ -149,6 +149,14 @@ export function createStudentView() {
         add(section, 'p', `접속 상태(access): ${stateText(accessLabels, event.state.access)}`);
         add(section, 'p', `세션 상태(session): ${stateText({ active: '활성', expired: '만료', revoked: '철회됨', unknown: '확인 불가' }, event.state.session)}`);
         add(section, 'p', `기기 상태(device): ${stateText({ compliant: '보안 기준 충족', noncompliant: '보안 기준 미충족', unknown: '확인 불가' }, event.state.device)}`);
+        for (const action of event.supportedActions) {
+          const button = add(section, 'button', `${action} 미지원`);
+          button.type = 'button';
+          button.disabled = true;
+        }
+        if (event.supportedActions.length > 0) {
+          add(section, 'p', '아직 지원하지 않는 조치입니다. 조치 실행 연결은 준비 중이며 요청을 전송하지 않습니다.');
+        }
       };
       const renderList = () => {
         list.replaceChildren();
@@ -212,24 +220,30 @@ export function createStudentView() {
       let safeText = '';
       if (diagnostics.status === 'ok') {
         const data = diagnostics.data;
-        safeText = [
-          `requestId: ${data.requestId ?? '확인 불가'}`,
-          `component: ${data.component ?? '확인 불가'}`,
-          `version: ${data.version ?? '확인 불가'}`,
-          `checkedAt: ${data.checkedAt ?? '확인 불가'}`,
-          `engine.mode: ${data.engine?.mode ?? 'unknown'}`,
-          `engine.code: ${data.engine?.code ?? '확인 불가'}`,
-        ].join('\n');
-        add('pre', safeText);
+        if (!data || Object.keys(data).length === 0) {
+          add('p', '제공된 진단 정보가 없습니다.');
+        } else {
+          safeText = [
+            `requestId: ${data.requestId ?? '확인 불가'}`,
+            `component: ${data.component ?? '확인 불가'}`,
+            `version: ${data.version ?? '확인 불가'}`,
+            `checkedAt: ${data.checkedAt ?? '확인 불가'}`,
+            `engine.mode: ${data.engine?.mode ?? 'unknown'}`,
+            `engine.code: ${data.engine?.code ?? '확인 불가'}`,
+          ].join('\n');
+          add('pre', safeText);
+        }
       } else if (diagnostics.status === 'loading') add('p', '연결 점검 도움정보 불러오는 중');
       else if (diagnostics.status === 'error') failure('연결 점검 도움정보', diagnostics, '다시 시도하려면 제공 영역의 도움정보 불러오기 버튼을 직접 누르세요.');
       else add('p', '연결 점검 전입니다. 제공 영역의 도움정보 불러오기 버튼을 누르세요.');
       add('p', '도움 요청에 사용할 위의 안전한 점검 항목만 복사합니다.');
       const copy = add('button', '도움정보 복사');
       copy.type = 'button';
-      copy.disabled = diagnostics.status !== 'ok';
+      copy.disabled = safeText.length === 0;
       const copyStatus = add('p', '');
+      copyStatus.setAttribute('role', 'status');
       copy.addEventListener('click', async () => {
+        if (!safeText) return;
         try {
           await navigator.clipboard.writeText(safeText);
           copyStatus.textContent = '도움정보를 복사했습니다.';
