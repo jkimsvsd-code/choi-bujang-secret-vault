@@ -13,8 +13,8 @@ export function createStudentView() {
         parent.appendChild(element);
         return element;
       };
-      const deviceText = (device) => `${device.label} · 기기 ID: ${device.id} · ${deviceLabels[device.status] ?? '확인 불가'}`;
-      const sessionText = (session) => `세션 ID: ${session.id} · ${sessionLabels[session.status] ?? '확인 불가'}`;
+      const deviceText = (device) => `${device.label} · 기기 ID: ${device.id} · ${deviceLabels[device.status] ?? '확인 불가'} (${device.status})`;
+      const sessionText = (session) => `세션 ID: ${session.id} · ${sessionLabels[session.status] ?? '확인 불가'} (${session.status})`;
       const renderResource = (title, resource, renderData) => {
         const section = document.createElement('section');
         addText(section, 'h3', title);
