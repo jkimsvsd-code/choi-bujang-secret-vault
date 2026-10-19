@@ -118,39 +118,37 @@ export async function runAttackChecks(config) {
       // only GET/HEAD probes may reach the network.
       return [api, staticFile, ...original, ...zones, ...recovery,
         ...(config.step >= 6 ? [
-          { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: "미실행: 자체 WebAuthn 승인 API 구현. 실제 DB 설치·관리자 승인·보안 장치 확인 후 정상 접근은 미검증" },
-          { attackId: "unregistered_device_read", expected: "미등록 기기 접근 거부", observed: "미실행: 미등록 기기 실제 공격은 심판 담당. 화면과 보호 API의 승인 전 거부는 로컬 모의 검사와 구분" },
+          { attackId: "registered_device_read", expected: "등록 기기의 자료실 읽기 허용", observed: 'not_run' },
+          { attackId: "unregistered_device_read", expected: "미등록 기기 접근 거부", observed: 'not_run' },
         ] : []),
         ...(config.step >= 7 ? [
-          { attackId: 'compound_access_step_up', expected: '복합 가상 사건은 step_up, 정상 가상 사건은 allow', observed: '미실행: 이 HTTP 자기 점검에서는 가상 판정기를 호출하지 않음. 별도 로컬 연습과 구분' },
-          { attackId: 'reauthentication_gate', expected: '계약이 준비된 환경에서만 재로그인 전 자료 차단과 같은 주체의 새 로그인 후 요청 재판정·허용 실측', observed: '미실행: 제공 계약에서 같은 주체의 추가 확인 요청 이후 재로그인 시각 검증을 확인하지 못함. 실제 자료 차단·새 요청 허용 미검증' },
+          { attackId: 'compound_access_step_up', expected: '복합 가상 사건은 step_up, 정상 가상 사건은 allow', observed: 'not_run' },
+          { attackId: 'reauthentication_gate', expected: '계약이 준비된 환경에서만 재로그인 전 자료 차단과 같은 주체의 새 로그인 후 요청 재판정·허용 실측', observed: 'not_run' },
         ] : []),
         ...(config.step >= 8 ? [
-          { attackId: 'instructor_permission', expected: '저장된 활성 강사는 자료 조회·공지 수정 허용, 일반 사용자·위조 역할·회수된 권한은 거부', observed: '미실행: 실제 로그인 계정의 강사 권한 검증 없음. 로컬 모의 검사와 구분' },
-          { attackId: 'resource_zone_decider', expected: '단일 메모·공지 GET 허용, 메모 목록·공지 쓰기·강사 자료·미확인 경로 거부', observed: '미실행: HTTP 자기 점검은 판정기를 호출하지 않음. 별도 가상 요청 검사와 구분' },
+          { attackId: 'instructor_permission', expected: '저장된 활성 강사는 자료 조회·공지 수정 허용, 일반 사용자·위조 역할·회수된 권한은 거부', observed: 'not_run' },
+          { attackId: 'resource_zone_decider', expected: '단일 메모·공지 GET 허용, 메모 목록·공지 쓰기·강사 자료·미확인 경로 거부', observed: 'not_run' },
         ] : []),
         ...(config.step >= 9 ? [
-          { attackId: 'burst_read_revocation', expected: '같은 주체 GET 10분 내 121건 이상만 회수 제안, 정상 사건은 observe', observed: '미실행: HTTP 자기 점검은 detect를 호출하지 않음. 운영 사건 전달·접속 회수·정상 기기 유지 실측 미검증. 별도 가상 검사와 구분' },
+          { attackId: 'burst_read_revocation', expected: '같은 주체 GET 10분 내 121건 이상만 회수 제안, 정상 사건은 observe', observed: 'not_run' },
         ] : []),
         { attackId: 'owner_crud',
           expected: 'A/B 각각 본인 목록·한 건 GET 200, POST 201, PUT 200, DELETE 204',
-          observed: '미실행: 실제 계정의 정상 CRUD·작전실 정상 요약 및 서버 기록 대조·41종 실측은 미실행' },
+          observed: 'not_run' },
         { attackId: 'cross_owner_access',
           expected: 'A/B 서로의 메모 GET·PUT·DELETE 404, 타인 자료 반환·변경 없음',
-          observed: '미실행: 실제 계정의 타인 메모 접근은 사용자가 직접 검증 예정' },
+          observed: 'not_run' },
         { attackId: 'owner_spoofing',
           expected: 'URL·본문 owner_id를 무시하고 POST·PUT 소유자는 검증된 사용자 ID 유지',
-          observed: '미실행: 배포 환경 소유자 위조 검증은 사용자 수행 예정. 로컬 모의 테스트와 구분' },
+          observed: 'not_run' },
         { attackId: 'anonymous_other_methods',
           expected: '비로그인 개별 GET 및 POST·PUT·DELETE는 HTTP 401',
-          observed: '미실행: 메모 개별 GET 및 POST·PUT·DELETE 요청은 이번 자기 점검에서 전송하지 않음' },
+          observed: 'not_run' },
         { attackId: 'database_rls',
           expected: config.step >= 5
             ? 'PUBLIC·anon·authenticated 직접 권한 없음, service_role CRUD 유지, 원본 직접 읽기·쓰기 거부'
             : 'anon 권한 없음, authenticated CRUD 및 auth.uid() 소유자 제한',
-          observed: config.step >= 8
-            ? '미실행: 8단계 SQL 적용·강사 등록은 사용자 보고. 실제 DB 권한·RLS는 이 자기 점검에서 조회하지 않음'
-            : '미실행: SQL 적용과 DB 권한·RLS 검증은 사용자가 직접 수행 예정' },
+          observed: 'not_run' },
       ];
     }
     return [api, staticFile];
