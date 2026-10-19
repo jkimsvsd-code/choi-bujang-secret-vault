@@ -24,7 +24,14 @@ export async function runAttackChecks(config) {
           method, redirect: 'manual', cache: 'no-store', signal: AbortSignal.timeout(10000),
         });
       } catch {
-        return { attackId, expected, observed: '확인 불가: 요청 실패 또는 시간 초과 (HTTP 응답 없음)' };
+        return { attackId, expected, observed: config.step === 12 ? 'not_run' : '확인 불가: 요청 실패 또는 시간 초과 (HTTP 응답 없음)' };
+      }
+      if (config.step === 12) {
+        // Only an actual response supplies a result; never infer success from expectations.
+        const observed = Number.isInteger(response.status) && response.status >= 100 && response.status <= 599
+          ? `HTTP ${response.status}` : 'not_run';
+        try { await response.body?.cancel(); } catch { /* Keep the received status only. */ }
+        return { attackId, expected, observed };
       }
       if (response.status >= 300 && response.status < 400) {
         let vercelLogin = false;
