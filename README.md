@@ -81,7 +81,7 @@ Vercel, GitHub, Supabase로 가상 메모 자료실을 만들고 단계별로 �
 - 1~11단계 41종 시험안은 모두 미실행입니다. 공식 41종 목록과 동일하다고 주장하지 않습니다. 정상 허용·금지 거부·요청 ID·시각·가린 서버 기록이 모두 있어야 실측 통과로 기록합니다.
 - 확인: 관련 모의 검사 18개, 판정기 가상 요청 4개, 탐지 가상 사건 6개와 로컬 빌드 통과. 2026-10-19 운영 /aleph.json은 HTTP 200·step=11·b2918508bb45862d6ed2977bdbcab86f41c419d3으로 확인했습니다. 12단계 배포 결과가 아닙니다.
 - 설정 step=12. 기존 배포 주소·로그인 issuer/audience/JWKS·원본 learning_notes API·단일 메모 및 공지 GET 허용 경로·복원 경로를 유지하며 구현과 대조했습니다. judgeIssuer와 실제 구현 RULE_IDS 다섯 개는 변경하지 않습니다. 운영 환경변수 값·이번 커밋 배포는 미확인입니다.
-- 재실행: 커밋 후 깨끗한 작업 트리에서 `npm.cmd run bundle`. 생성된 artifacts/submission.json의 step=12·commit·attackAttempts를 확인합니다. 자기 점검은 인증정보·본문 없이 기존 HTTP 8건을 요청하고 나머지 항목은 미실행으로 남깁니다. JSON 생성은 실측 전체 통과·배포·심판 통과가 아닙니다.
+- 재실행: 커밋 후 깨끗한 작업 트리에서 `npm.cmd run bundle`. 생성된 artifacts/submission.json의 step=12·commit·attackAttempts를 확인합니다. 현재 자기 점검 결과는 HTTP 5항목·not_run 15항목입니다. 인증정보·본문 없이 GET 요청 5건의 실제 HTTP 상태만 기록하며, 쓰기 점검 3건을 포함한 미실행 15항목은 observed=not_run으로 남깁니다. JSON 생성은 실측 전체 통과·배포·심판 통과가 아닙니다.
 - 화면: 자료실 로그인 → 승인된 기기 확인 → 탈환 작전실 요약 새로고침. 정상 기대는 요약 응답과 같은 ID의 서버 기록 일치, 거부 기대는 무인증 401·미승인 403입니다. 이 정상/거부 운영 대조는 아직 미실행입니다.
 - 설치·실행·중지·복구 순서와 제공 ALEPH SDP 엔진의 출처를 아래에 기록했습니다. bundle-notes.json 및 artifacts/submission.json은 커밋하지 않습니다. 비밀값·개인정보·메모 본문을 제출물에 넣지 않습니다.
 
