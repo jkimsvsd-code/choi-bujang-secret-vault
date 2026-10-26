@@ -1,7 +1,7 @@
 // 이 파일은 학생이 같은 프로젝트에서 이어서 구현합니다.
 // 제공 UI를 받은 것만으로 단계 완료를 인정하지 않습니다.
-export function createStudentView() {
-  return {
+export function createStudentView({api} = {}) {
+  const legacy = {
     renderIdentity({ me, devices, sessions }) {
       const root = document.createElement('div');
       const deviceLabels = { compliant: '보안 기준 충족', noncompliant: '보안 기준 미충족', unknown: '확인 불가' };
@@ -542,4 +542,103 @@ export function createStudentView() {
       return root;
     },
   };
+  return attachDashboard(legacy,api);
+
+}
+
+
+// Only the provided student GET capability is used. No common DOM, CSS or PC APIs.
+function attachDashboard(legacy,api){
+  const add=(parent,tag,text)=>{const node=document.createElement(tag);node.textContent=text;parent.appendChild(node);return node;};
+  const stamp=v=>Number.isFinite(Date.parse(v))?new Date(v).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',hour12:false})+' KST':'제공되지 않음';
+  const source=r=>r?.mode==='demo'?'예제 자료 · 설명용이며 실제 PC 조회값이 아닙니다.':r?.mode==='connected'?'연결 원천 자료 · PC 실측 및 터널 연결 성공과 별개입니다.':'출처 확인 불가 · 연결 상태를 확인하세요.';
+  const root=document.createElement('div');root.setAttribute('data-student-dashboard','true');
+  add(root,'h3','학생 핵심 기능 3가지');
+  add(root,'p','기기·세션 → 보안 기록 → 패키지 조회 순서입니다. 아래 다시 조회는 학생 영역만 갱신합니다. 기존 PC 측정과 공통 화면의 조회 결과는 별도입니다.');
+  const configs=[
+    {key:'identity',title:'1. 내 기기·세션 상태',paths:['/api/me','/api/devices','/api/sessions'],labels:['로그인','기기','세션']},
+    {key:'events',title:'2. 보안 기록 타임라인',paths:['/api/events'],labels:['보안 기록']},
+    {key:'vulnerabilities',title:'3. 설치 패키지·취약점 조회',paths:['/api/vulnerabilities'],labels:['설치 패키지·취약점']},
+  ];
+  const panels=new Map();
+  for(const config of configs){
+    const section=add(root,'section','');section.setAttribute('aria-label',config.title);
+    add(section,'h4',config.title);
+    const button=add(section,'button',`${config.title.slice(3)} 다시 조회`);button.type='button';
+    const status=add(section,'p','조회 전 · 자동 재조회하지 않습니다.');status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+    const details=add(section,'details','');add(details,'summary','조회 결과 펼치기 / 접기');
+    const body=add(details,'div','');
+    const panel={...config,section,button,status,details,body,generation:0,busy:false,signature:null};panels.set(config.key,panel);
+    button.addEventListener('click',async()=>{
+      if(panel.busy)return;
+      if(typeof api?.get!=='function'){status.textContent='조회 불가 · 학생 조회 API가 없습니다. 실행 버전과 학생 API 지원을 확인하세요.';return;}
+      const generation=++panel.generation;panel.busy=true;button.setAttribute('aria-disabled','true');section.setAttribute('aria-busy','true');
+      status.textContent=`${config.labels.join('·')} 조회 중… 완료까지 기다려 주세요.`;body.replaceChildren();details.open=true;
+      const results=await Promise.all(config.paths.map(async path=>{
+        let timer;
+        try{return await Promise.race([Promise.resolve().then(()=>api.get(path)),new Promise(resolve=>{timer=setTimeout(()=>resolve({ok:false,error:{code:'TIMEOUT'}}),12000);})]);}
+        catch{return {ok:false,error:{code:'REQUEST_FAILED'}};}finally{clearTimeout(timer);}
+      }));
+      if(generation!==panel.generation)return;
+      panel.busy=false;button.removeAttribute('aria-disabled');section.setAttribute('aria-busy','false');
+      const resources=results.map(r=>r?.ok===true?{status:'ok',mode:r.meta?.mode,data:r.data,checkedAt:r.meta?.checkedAt}:{status:'error',error:{code:r?.error?.code||'INVALID_RESPONSE'}});
+      display(panel,resources,true);
+    });
+  }
+  function display(panel,resources,queried=false){
+    panel.body.replaceChildren();let failures=0,waiting=0;
+    for(const [index,r] of resources.entries()){
+      const label=panel.labels[index];add(panel.body,'h5',label);add(panel.body,'p',panel.key==='vulnerabilities'?'패키지 조회 상태·출처를 아래에서 확인하세요. 앱의 demo 모드는 패키지 조회 성공의 근거가 아닙니다.':source(r));
+      if(r?.status==='loading'){waiting++;add(panel.body,'p',`${label} 대기 중`);continue;}
+      if(r?.status!=='ok'){
+        if(r?.status==='error'){failures++;add(panel.body,'p',`${label} 조회 실패 · 결과 확인 불가. 다음: 로컬 앱 실행·계정 연결을 확인한 뒤 다시 조회하세요. 계속 실패하면 제공 도움정보를 확인하세요.`);}
+        else add(panel.body,'p',`${label} 조회 전 · 다시 조회를 누르세요.`);
+        continue;
+      }
+      add(panel.body,'p',`원천 확인 시각: ${stamp(r.checkedAt||r.data?.checkedAt)}${queried?' · 화면 수신 시각: '+stamp(new Date().toISOString()):''}`);
+      try{
+        if(panel.key==='identity'){
+          const entries=index===0?[r.data.device,r.data.session]:r.data;
+          if(!Array.isArray(entries)||entries.some(x=>!x||typeof x.id!=='string'||typeof x.status!=='string'))throw Error();
+          if(!entries.length)add(panel.body,'p','조회된 항목 없음');
+          const list=add(panel.body,'ul','');for(const entry of entries)add(list,'li',`${entry.label||entry.id} · 상태: ${entry.status}`);
+        }else if(panel.key==='events'){
+          if(!Array.isArray(r.data)||r.data.some(e=>!e||typeof e.kind!=='string'||typeof e.summary!=='string'||!Number.isFinite(Date.parse(e.at))))throw Error();
+          const labelNode=add(panel.body,'label','기록 종류 '),select=add(labelNode,'select','');select.setAttribute('aria-label','학생 핵심 보안 기록 종류');
+          for(const kind of ['전체',...new Set(r.data.map(e=>e.kind))])add(select,'option',kind).value=kind;
+          const list=add(panel.body,'ol','');list.setAttribute('aria-label','학생 핵심 보안 기록 타임라인');
+          const render=()=>{list.replaceChildren();const rows=[...r.data].sort((a,b)=>Date.parse(b.at)-Date.parse(a.at)).filter(e=>select.value==='전체'||e.kind===select.value);
+            if(!rows.length)add(list,'li','조건에 맞는 기록 없음');
+            for(const event of rows){const li=add(list,'li','');add(li,'p',`${stamp(event.at)} · ${event.kind}`);add(li,'p',event.summary);}
+          };select.addEventListener('change',render);render();
+          add(panel.body,'p','행의 시각은 사건 발생 시각이며 조회 시각과 다릅니다. 상세·근거는 보안 기록 메뉴의 기존 학생 타임라인에서 확인하세요.');
+        }else{
+          const data=r.data;if(!data||!['complete','partial','not_checked','not_configured','unverifiable'].includes(data.status)||!Array.isArray(data.packages))throw Error();
+          add(panel.body,'p',`조회 범위 상태: ${data.status} · 패키지 ${data.packages.length}개`);
+          const list=add(panel.body,'ul','');for(const pkg of data.packages){
+            if(!pkg||typeof pkg.status!=='string')throw Error();
+            add(list,'li',`${pkg.name||'이름 확인 불가'} · ${pkg.version||'버전 확인 불가'} · ${pkg.status} · 출처: ${pkg.source||'확인 불가'} · ${stamp(pkg.checkedAt)}`);
+            if(pkg.status==='unverifiable'){failures++;add(list,'li','이 패키지 조회 확인 불가 · 설치 버전과 공개 조회 승인 설정을 확인한 뒤 다시 조회하세요.');}
+          }
+          if(data.status!=='complete'){failures++;add(panel.body,'p','전체 조회 미완료 · 다음: 프로젝트 설치 상태·lock 파일과 공개 조회 승인 설정을 확인하고 다시 조회하세요.');}
+          add(panel.body,'p','미조회·실패는 취약점 없음이 아닙니다. 상세 근거는 기존 설치 패키지 학생 영역에서 확인하세요.');
+        }
+      }catch{failures++;add(panel.body,'p',`${label} 응답 형식 확인 불가 · 다음: 앱 버전을 확인하고 다시 조회하세요. 예제 값으로 대체하지 않습니다.`);}
+    }
+    panel.status.textContent=waiting?`${panel.title.slice(3)} 조회 대기 중`:`${panel.title.slice(3)} · ${failures?'확인 불가 항목 있음 · 아래 실패 항목과 다음 행동을 확인하세요.':queried?'조회 완료 · 자료 출처와 시각을 확인하세요.':'제공된 상태 요약 · 자세한 결과를 펼치거나 다시 조회하세요.'}`;
+  }
+  function sync(key,resources){
+    const p=panels.get(key),signature=JSON.stringify(resources);
+    if(signature===p.signature)return;
+    p.signature=signature;p.generation++;p.busy=false;p.button.removeAttribute('aria-disabled');p.section.setAttribute('aria-busy','false');display(p,resources);
+  }
+  const originalIdentity=legacy.renderIdentity,originalEvents=legacy.renderEvents,originalVulns=legacy.renderVulnerabilities;
+  legacy.renderIdentity=function(input){
+    sync('identity',[input.me,input.devices,input.sessions]);
+    const container=document.createElement('div');container.appendChild(root);
+    const details=add(container,'details','');add(details,'summary','기존 로그인·기기·세션 상세');details.appendChild(originalIdentity(input));return container;
+  };
+  legacy.renderEvents=function(input){sync('events',[input]);return originalEvents(input);};
+  legacy.renderVulnerabilities=function(input){sync('vulnerabilities',[input]);return originalVulns(input);};
+  return legacy;
 }

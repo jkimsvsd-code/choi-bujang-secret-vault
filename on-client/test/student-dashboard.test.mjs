@@ -1,0 +1,48 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createStudentView} from '../student/extension.mjs';
+class Node {
+  constructor(tag){this.tagName=tag;this.children=[];this.attrs={};this.listeners={};this.text='';this.value='';}
+  set textContent(v){this.text=String(v);this.children=[];}
+  get textContent(){return this.text+this.children.map(c=>c.textContent).join(' ');}
+  appendChild(n){this.children.push(n);return n;}
+  setAttribute(k,v){this.attrs[k]=String(v);}
+  removeAttribute(k){delete this.attrs[k];}
+  addEventListener(k,f){this.listeners[k]=f;}
+  replaceChildren(...nodes){this.children=nodes;this.text='';}
+}
+globalThis.document={createElement:tag=>new Node(tag)};
+const idle={status:'idle',mode:'unknown'};
+const walk=n=>[n,...n.children.flatMap(walk)];
+const buttons=n=>walk(n).filter(x=>x.tagName==='button');
+const setup=api=>{const view=createStudentView({api});return {view,root:view.renderIdentity({me:idle,devices:idle,sessions:idle})};};
+test('three native keyboard buttons, safe waiting and failed item guidance without fallback',async()=>{
+  let finish;const calls=[];const pending=new Promise(r=>finish=r);
+  const {root}=setup({get:path=>{calls.push(path);return pending;}});
+  const controls=buttons(root);assert.equal(controls.length,3);assert.ok(controls.every(b=>b.type==='button'));
+  const action=controls[0].listeners.click();await Promise.resolve();
+  assert.match(root.textContent,/조회 중/);assert.equal(controls[0].attrs['aria-disabled'],'true');
+  await controls[0].listeners.click();assert.equal(calls.length,3);
+  finish({ok:false,error:{code:'DENIED'}});await action;
+  assert.match(root.textContent,/기기 조회 실패/);assert.match(root.textContent,/다시 조회하세요/);assert.doesNotMatch(root.textContent,/예제 자료/);
+  assert.equal(controls[0].attrs['aria-disabled'],undefined);
+});
+test('malformed response fails visibly; demo data is explicitly identified',async()=>{
+  const {root}=setup({get:async()=>({ok:true,meta:{mode:'demo',checkedAt:'2026-10-27T00:00:00Z'},data:{}})});
+  await buttons(root)[1].listeners.click();
+  assert.match(root.textContent,/예제 자료/);assert.match(root.textContent,/응답 형식 확인 불가/);
+});
+test('late request cannot overwrite newer host state',async()=>{
+  let finish;const {view,root}=setup({get:()=>new Promise(r=>finish=r)});
+  const action=buttons(root)[2].listeners.click();await Promise.resolve();
+  view.renderVulnerabilities({status:'error',mode:'unknown',error:{message:'host failure'}});
+  finish({ok:true,meta:{mode:'demo'},data:{status:'complete',packages:[]}});await action;
+  assert.match(root.textContent,/설치 패키지·취약점 조회 실패/);assert.doesNotMatch(root.textContent,/예제 자료/);
+});
+test('timeline preserves event-time ordering and native kind filter',async()=>{
+  const {root}=setup({get:async()=>({ok:true,meta:{mode:'demo'},data:[{kind:'access',summary:'older',at:'2026-10-26T00:00:00Z'},{kind:'xdr',summary:'newer',at:'2026-10-27T00:00:00Z'}]})});
+  await buttons(root)[1].listeners.click();
+  const select=walk(root).find(n=>n.tagName==='select');select.value='전체';select.listeners.change();
+  assert.ok(root.textContent.indexOf('newer')<root.textContent.indexOf('older'));
+  select.value='access';select.listeners.change();assert.doesNotMatch(root.textContent,/newer/);assert.match(root.textContent,/older/);
+});
