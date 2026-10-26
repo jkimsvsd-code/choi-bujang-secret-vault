@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createStudentView} from '../student/extension.mjs';
 class Node {
-  constructor(tag){this.tagName=tag;this.children=[];this.attrs={};this.listeners={};this.text='';this.value='';}
+  constructor(tag){this.tagName=tag;this.children=[];this.attrs={};this.listeners={};this.text='';this.value='';this.style={};this.open=false;}
   set textContent(v){this.text=String(v);this.children=[];}
   get textContent(){return this.text+this.children.map(c=>c.textContent).join(' ');}
   appendChild(n){this.children.push(n);return n;}
@@ -44,5 +44,16 @@ test('timeline preserves event-time ordering and native kind filter',async()=>{
   await buttons(root)[1].listeners.click();
   const select=walk(root).find(n=>n.tagName==='select');select.value='전체';select.listeners.change();
   assert.ok(root.textContent.indexOf('newer')<root.textContent.indexOf('older'));
-  select.value='access';select.listeners.change();assert.doesNotMatch(root.textContent,/newer/);assert.match(root.textContent,/older/);
+  select.value='access';select.listeners.change();const timeline=walk(root).find(n=>n.attrs['aria-label']==='학생 핵심 보안 기록 타임라인');assert.doesNotMatch(timeline.textContent,/newer/);assert.match(timeline.textContent,/older/);
+});
+
+test('cards expose source, summary and time while detail stays collapsed after refresh',async()=>{
+  const {root}=setup({get:async()=>({ok:true,meta:{mode:'demo',checkedAt:'2026-10-27T00:00:00Z'},data:[]})});
+  assert.match(root.textContent,/내 보안 현황/);
+  const card=walk(root).find(n=>n.attrs['aria-label']==='보안 기록');
+  const details=card.children.find(n=>n.tagName==='details');assert.equal(details.open,false);
+  await buttons(root)[1].listeners.click();assert.equal(details.open,false);
+  const visible=card.children.filter(n=>n!==details).map(n=>n.textContent).join(' ');
+  assert.match(visible,/조회된 기록 0건/);assert.match(visible,/예제 자료/);assert.match(visible,/원천 확인 시각/);assert.match(visible,/2026/);
+  assert.equal(buttons(root)[1].attrs['aria-label'],'보안 기록 다시 조회');
 });
