@@ -260,3 +260,14 @@ main:focus { outline: none; }
 #pc-inspection caption { text-align:left; color:var(--muted); padding:8px 0; }
 #pc-inspection th, #pc-inspection td { text-align:left; padding:10px; border:1px solid var(--border); overflow-wrap:anywhere; }
 #pc-inspection thead { background:var(--accent-soft); }
+
+#pc-inspection .inspection-count-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:16px 0; }
+#pc-inspection .inspection-count-card { border:1px solid var(--border); border-radius:8px; padding:16px; background:var(--bg); }
+#pc-inspection .inspection-count-card h4 { margin:0; }
+#pc-inspection .inspection-count-value { font-size:1.8rem; font-weight:700; margin:12px 0; font-variant-numeric:tabular-nums; }
+#pc-inspection .inspection-count-table { min-width:760px; margin-top:12px; }
+#pc-inspection .inspection-count-table thead th { text-align:center; }
+#pc-inspection .inspection-count-table tbody th { min-width:200px; }
+#pc-inspection .inspection-count-table td:nth-child(n+2):nth-child(-n+5) { min-width:55px; white-space:nowrap; text-align:center; }
+#pc-inspection .inspection-window { display:block; margin-top:8px; font-size:.85rem; font-weight:400; color:var(--muted); }
+@media(max-width:600px) { #pc-inspection .inspection-count-cards { grid-template-columns:1fr; } }

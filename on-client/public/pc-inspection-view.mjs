@@ -25,15 +25,19 @@ export function createPcInspectionView(root,request){
   for(const [key,value] of [['all','전체'],...Object.entries(names)])add(filter,'option',value).value=key;
   const message=add(root,'p','조회 전 · 자동 조회하지 않습니다.');message.setAttribute('role','status');
   const list=add(root,'ol','');list.className='inspection-timeline';list.setAttribute('aria-label','PC 구성 조회 타임라인');
+  const windows=add(root,'div','');windows.className='inspection-windows';
   let records=[];
+  const expanded=new Map();
   const valid=r=>r&&r.source==='measured'&&Number.isFinite(Date.parse(r.queriedAt))&&Array.isArray(r.sections)&&r.sections.length===4&&r.sections.every(s=>Object.hasOwn(names,s.kind)&&['ok','unknown'].includes(s.status)&&Array.isArray(s.rows));
   function render(){
     const opened=new Set([...list.querySelectorAll('details[open]')].map(d=>d.dataset.at));list.replaceChildren();
-    for(const [index,r] of [...records].sort((a,b)=>Date.parse(b.queriedAt)-Date.parse(a.queriedAt)).entries()){
+    const ordered=[...records].sort((a,b)=>Date.parse(b.queriedAt)-Date.parse(a.queriedAt));
+    for(const [index,r] of ordered.entries()){
+      if(!['all','network','firewall'].includes(filter.value))continue;
       const li=add(list,'li',''),details=add(li,'details','');details.dataset.at=r.queriedAt;details.open=opened.has(r.queriedAt)||index===0;
       add(details,'summary',`${time(r.queriedAt)} · 실측${index===0?' · 최신 조회':''}`);
       if(r.saved===false)add(details,'p','저장 실패 · 이번 화면에서만 확인할 수 있습니다.');
-      for(const s of r.sections.filter(s=>filter.value==='all'||s.kind===filter.value)){
+      for(const s of r.sections.filter(s=>['network','firewall'].includes(s.kind)&&(filter.value==='all'||s.kind===filter.value))){
         add(details,'h4',names[s.kind]);
         add(details,'p',`조회 완료/시도 시각 ${time(s.checkedAt)} · 실측 · ${s.status==='ok'?'읽기 성공':'확인 불가'}`);
         if(['system','application'].includes(s.kind))add(details,'p',`집계 구간 ${time(r.windowStart)} ~ ${time(r.windowEnd)} · 24시간 · 단위: 건`);
@@ -44,6 +48,53 @@ export function createPcInspectionView(root,request){
         const head=add(add(table,'thead',''),'tr','');for(const v of ['항목','값','단위'])add(head,'th',v).scope='col';
         const body=add(table,'tbody','');
         for(const row of s.rows){const tr=add(body,'tr','');add(tr,'th',row.label).scope='row';add(tr,'td',row.value);add(tr,'td',row.unit);}
+      }
+    }
+    windows.replaceChildren();
+    const count=(section,label)=>{
+      const row=section?.rows.find(r=>r.label===label);
+      return section?.status==='ok'&&row?.unit==='건'&&/^\d+$/.test(row.value)?row.value:null;
+    };
+    for(const kind of ['system','application']){
+      if(filter.value!=='all'&&filter.value!==kind)continue;
+      const group=add(windows,'section','');group.setAttribute('aria-label',`${names[kind]} 집계`);
+      add(group,'h3',`${names[kind]} · 최신 경고·오류`);
+      if(!ordered.length){add(group,'p','조회 자료 없음 · PC 구성·기록 조회 또는 PC 구성 이력 조회를 누르세요.');continue;}
+      const latest=ordered[0],current=latest.sections.find(s=>s.kind===kind);
+      add(group,'p',`실측 · 최신 조회 ${time(latest.queriedAt)} · 완료/시도 ${time(current?.checkedAt)}`);
+      add(group,'p',`최근 24시간 집계: ${time(latest.windowStart)} ~ ${time(latest.windowEnd)}`);
+      if(latest.saved===false)add(group,'p','저장 실패 · 이번 화면에서만 확인 가능').className='inspection-notice';
+      const cards=add(group,'div','');cards.className='inspection-count-cards';
+      for(const label of ['경고 (Level 3)','오류 (Level 2)']){
+        const card=add(cards,'article','');card.className='inspection-count-card';
+        add(card,'h4',label);
+        const value=count(current,label);
+        add(card,'p',value===null?'확인 불가':`${value} 건`).className='inspection-count-value';
+        if(value===null)add(card,'p',current?.reason||'집계 항목을 확인할 수 없습니다.');
+      }
+      const details=add(group,'details','');details.open=expanded.get(kind)??false;
+      details.addEventListener('toggle',()=>{if(details.isConnected)expanded.set(kind,details.open);});
+      add(details,'summary',`${names[kind]} 조회 이력 · ${ordered.length}회 · 최신순`);
+      const wrap=add(details,'div','');wrap.className='inspection-table-wrap';wrap.tabIndex=0;
+      wrap.setAttribute('role','region');wrap.setAttribute('aria-label',`${names[kind]} 시간대별 집계 표`);
+      const table=add(wrap,'table','');table.className='inspection-count-table';
+      add(table,'caption','실측 · 각 행은 조회 시점까지 최근 24시간 집계입니다. 집계 구간이 겹치므로 행의 건수를 합산하지 마세요.');
+      const head=add(table,'thead',''),top=add(head,'tr','');
+      const date=add(top,'th','조회 시각 / 집계 구간');date.rowSpan=2;date.scope='col';
+      for(const label of ['경고 (Level 3)','오류 (Level 2)']){const th=add(top,'th',label);th.colSpan=2;th.scope='colgroup';}
+      const state=add(top,'th','완료/시도 시각 · 상태 / 이유');state.rowSpan=2;state.scope='col';
+      const sub=add(head,'tr','');for(const label of ['값','단위','값','단위'])add(sub,'th',label).scope='col';
+      const body=add(table,'tbody','');
+      for(const record of ordered){
+        const section=record.sections.find(s=>s.kind===kind),tr=add(body,'tr','');
+        const at=add(tr,'th',`조회 ${time(record.queriedAt)}`);at.scope='row';
+        add(at,'span',`${time(record.windowStart)} ~ ${time(record.windowEnd)} · 24시간`).className='inspection-window';
+        let complete=true;
+        for(const label of ['경고 (Level 3)','오류 (Level 2)']){
+          const value=count(section,label);if(value===null)complete=false;
+          add(tr,'td',value??'확인 불가');add(tr,'td','건');
+        }
+        add(tr,'td',`${time(section?.checkedAt)} · ${complete?'실측 · 읽기 성공':`확인 불가 · ${section?.reason||'집계 항목 누락 또는 형식 오류'}`}${record.saved===false?' · 저장 실패':''}`);
       }
     }
   }
