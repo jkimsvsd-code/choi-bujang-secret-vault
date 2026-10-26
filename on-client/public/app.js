@@ -2,6 +2,8 @@
 // 모든 외부·서버 문자열은 textContent로만 표시한다. innerHTML/insertAdjacentHTML 사용 금지.
 // 자동 재시도 없음: 모든 요청은 사용자 동작 또는 최초 1회 로드에서만 일어난다.
 import { normalizeScan, createVulnerabilitiesView } from '/vulnerabilities-view.mjs';
+import { createHistoryView } from '/history-view.mjs';
+let historyView;
 
 const STUDENT_MODULE = '/student/extension.mjs';
 const STUDENT_PENDING = '학생 구현 대기';
@@ -283,7 +285,7 @@ async function request(path, { method = 'GET', body, signal, timeoutMs = REQUEST
     const meta = normalizeMeta(json && json.meta);
     // 선택 coverage 는 값만 옮긴다. 검증은 loadResource 가 해당 kind 에서만 한다. ok:false 응답의 coverage 는 버린다.
     if (json && json.ok === true && response.ok) {
-      return { ok: true, data: json.data, meta, ...(Object.hasOwn(json, 'coverage') ? { coverage: json.coverage } : {}) };
+      return { ok: true, data: json.data, meta, history: json.history, ...(Object.hasOwn(json, 'coverage') ? { coverage: json.coverage } : {}) };
     }
     if (json && json.ok === false) {
       const err = json.error || {};
@@ -1285,6 +1287,7 @@ async function loadResource(key, gen, signal) {
   trackError(key, state[key]);
   renderMode();
   RENDERERS[key]();
+  if(key==='events')historyView?.refresh(result.history?.status==='error');
 }
 
 // 진행 중인 접속 판정과 AI 설명을 취소하고 판정 결과를 비운다.
@@ -1302,6 +1305,7 @@ function cancelInteractive() {
 }
 
 async function loadAll() {
+  historyView?.reset();
   const gen = ++generation;
   if (refreshController) refreshController.abort();
   const controller = new AbortController();
@@ -1332,6 +1336,7 @@ async function loadAll() {
 }
 
 function init() {
+  historyView=createHistoryView($('query-history'),request);
   setupNav();
   $('refresh').addEventListener('click', () => loadAll());
   $('diag-load').addEventListener('click', () => loadDiagnostics());

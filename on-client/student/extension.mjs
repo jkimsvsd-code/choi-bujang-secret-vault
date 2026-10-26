@@ -92,7 +92,12 @@ export function createStudentView() {
         parent.appendChild(element);
         return element;
       };
-      if (mode === 'demo') add(root, 'p', '예제 자료');
+      const sourceText = mode === 'demo'
+        ? '예제 자료 · 설명용 값이며 실제 PC 조회 결과가 아닙니다.'
+        : mode === 'connected'
+          ? '연결 원천 자료 · 이 PC 전체의 보안 상태를 측정한 결과는 아닙니다.'
+          : '실제 조회 미확인 · 자료 출처를 확인할 수 없습니다.';
+      add(root, 'p', sourceText);
       if (error?.code === 'CONTRACT_MISMATCH' || status === 'CONTRACT_MISMATCH') {
         add(root, 'p', `기록 확인 불가(CONTRACT_MISMATCH): ${error?.message ?? '응답 형식을 확인할 수 없습니다.'}`);
         return root;
@@ -110,6 +115,8 @@ export function createStudentView() {
         return root;
       }
       const events = [...data].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+      add(root, 'h3', '기록 타임라인');
+      add(root, 'p', '이번 조회의 사건 발생 시각 최신순입니다. 조회 확인 시각은 화면 위쪽에서 확인하세요. 과거 조회 이력을 누적 저장하지 않습니다.');
       const kindText = (value) => `${value === 'access' ? '접속 기록' : value === 'xdr' ? 'XDR 경보' : '확인 불가'}(${value})`;
       const appText = (value) => value || '앱을 확인할 수 없습니다';
       const accessLabels = { allowed: '접속 허용', denied: '접속 거부', unknown: '확인 불가' };
@@ -122,6 +129,7 @@ export function createStudentView() {
       for (const filter of filters) {
         const label = add(root, 'label', filter.name);
         filter.select = add(label, 'select', '');
+        filter.select.setAttribute('aria-label', filter.name);
         add(filter.select, 'option', '전체').value = 'all';
         for (const value of new Set(events.map(filter.read))) {
           // 값이 없는 appId에는 새 API 값을 만들지 않는다.
@@ -131,13 +139,23 @@ export function createStudentView() {
         filter.select.addEventListener('change', () => renderList());
       }
       const count = add(root, 'p', `표시된 기록: ${events.length}건`);
-      const list = add(root, 'ul', '');
+      count.setAttribute('aria-live', 'polite');
+      const reset = add(root, 'button', '필터 초기화');
+      reset.type = 'button';
+      reset.addEventListener('click', () => {
+        for (const filter of filters) filter.select.value = 'all';
+        renderList();
+      });
+      const list = add(root, 'ol', '');
+      list.setAttribute('aria-label', '사건 발생 시각순 기록 타임라인');
       const detail = add(root, 'div', '');
       const showDetail = (event) => {
         detail.replaceChildren();
         const section = add(detail, 'section', '');
         section.setAttribute('data-student-event-detail', event.id);
         add(section, 'h3', `${event.id} 상세`);
+        add(section, 'p', sourceText);
+        add(section, 'p', `사건 발생 시각: ${event.at}`);
         add(section, 'p', `사건 ID: ${event.id} · 앱: ${appText(event.appId)}`);
         for (const [title, entries] of [['근거', event.evidence], ['규칙', event.rules]]) {
           add(section, 'h4', title);
@@ -163,10 +181,17 @@ export function createStudentView() {
         detail.replaceChildren();
         const visible = events.filter((event) => filters.every((filter) =>
           filter.select.value === 'all' || filter.read(event) === filter.select.value));
-        count.textContent = `표시된 기록: ${visible.length}건`;
-        if (visible.length === 0) add(list, 'li', '표시할 기록이 없습니다');
+        count.textContent = `표시된 기록: ${visible.length}건 · 이번 조회 ${events.length}건 중`;
+        if (visible.length === 0) add(list, 'li', events.length === 0 ? '표시할 기록이 없습니다' : '선택한 조건에 맞는 기록이 없습니다. 필터 초기화로 전체 기록을 확인하세요.');
         for (const event of visible) {
-          const row = add(list, 'li', `사건 ID: ${event.id} · 시각: ${event.at} · 종류: ${kindText(event.kind)} · 앱: ${appText(event.appId)} · 요약: ${event.summary}`);
+          const row = add(list, 'li', '');
+          row.style.borderInlineStart = '3px solid currentColor';
+          row.style.padding = '0.5rem 1rem';
+          row.style.marginBlock = '0.75rem';
+          add(row, 'p', `사건 발생 시각: ${event.at}`);
+          add(row, 'h4', event.summary);
+          add(row, 'p', `사건 ID: ${event.id} · 종류: ${kindText(event.kind)} · 앱: ${appText(event.appId)}`);
+          add(row, 'p', sourceText);
           row.setAttribute('data-student-event-id', event.id);
           const button = add(row, 'button', `${event.id} 상세`);
           button.type = 'button';

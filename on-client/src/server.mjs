@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {createHistoryStore} from './history/store.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
@@ -196,6 +197,8 @@ async function jsonBody(req,keys,validate=(key,value)=>id(value)) {
 }
 export function createOnServer(serverOptions={}) {
   if(!serverOptions||typeof serverOptions!=='object'||types.isProxy(serverOptions))throw Error('INVALID_SERVER_AI_CONFIGURATION');
+  const history=createHistoryStore({directory:serverOptions.historyDirectory,clock:serverOptions.clock});
+  files.set('/history-view.mjs','public/history-view.mjs');
   const sdpDescriptor=Object.getOwnPropertyDescriptor(serverOptions,'sdpHostEngine');let sdpHostEngine=null;
   if(sdpDescriptor){
     if(!Object.hasOwn(sdpDescriptor,'value')||!sdpDescriptor.enumerable||sdpDescriptor.value!==undefined&&!isOwnedSdpHostEngine(sdpDescriptor.value))throw Error('INVALID_SERVER_AI_CONFIGURATION');
@@ -393,10 +396,31 @@ export function createOnServer(serverOptions={}) {
         const output=await bounded(signal=>connections[kind](input,{signal}));
         send(output.status,output.body);return;
       }
+      const historyScope=async()=>{
+        if(mode==='demo')return ['demo',resolve(assetsRoot)];
+        if(mode!=='connected')throw engineError('SUBJECT_SCOPE_UNVERIFIED','');
+        const identity=assertData('identity',await call('readIdentity'));
+        if(!id(engine.projectId)||identity.session.status!=='active')throw engineError('SUBJECT_SCOPE_UNVERIFIED','');
+        return ['connected',resolve(assetsRoot),engine.projectId,identity.user.id,identity.session.id];
+      };
+      // Session is checked for races but omitted from the persistent account partition.
+      const historyPartition=scope=>scope[0]==='connected'?scope.slice(0,-1):scope;
+      if((req.method==='GET'&&url.pathname==='/api/history')||(req.method==='POST'&&url.pathname==='/api/history/clear')){
+        const scope=await historyScope();
+        const deletion=req.method==='POST'?await bounded(()=>jsonBody(req,['queryId'],(_key,value)=>uuid(value))):null;
+        if(JSON.stringify(scope)!==JSON.stringify(await historyScope()))throw engineError('SUBJECT_SCOPE_UNVERIFIED','');
+        try {
+          const data=req.method==='POST'?await history.clear(historyPartition(scope),deletion.queryId):await history.read(historyPartition(scope));
+          if(JSON.stringify(scope)!==JSON.stringify(await historyScope()))throw engineError('SUBJECT_SCOPE_UNVERIFIED','');
+          send(200,{ok:true,data});
+        } catch { send(503,{ok:false,error:{code:'HISTORY_UNAVAILABLE',message:'조회 이력을 확인하지 못했습니다. 현재 기록은 별도로 확인하세요.',retryable:false}}); }
+        return;
+      }
       const gets=new Map([['/api/me',['readIdentity','identity']],['/api/apps',['readApps','apps']],['/api/events',['readEvents','events']],['/api/devices',['readDevices','devices']],['/api/sessions',['readSessions','sessions']]]);
       if(req.method==='GET'&&gets.has(url.pathname)){
         const [name,kind]=gets.get(url.pathname);
         let raw;
+        const beforeHistory=kind==='events'?await historyScope():null;
         if(mode==='connected'&&kind!=='identity'){
           const identity=assertData('identity',await call('readIdentity'));
           const scope=Object.freeze({subjectId:identity.user.id,projectId:engine.projectId,appId:'aleph-on',audience:'on-client'});
@@ -406,7 +430,14 @@ export function createOnServer(serverOptions={}) {
           const after=assertData('identity',await call('readIdentity'));
           if(after.user.id!==identity.user.id||after.session.id!==identity.session.id||after.session.status!=='active'||engine.projectId!==scope.projectId)throw engineError('SUBJECT_SCOPE_UNVERIFIED','');
         }else raw=await call(name);
-        const data=assertData(kind,raw),coverage=collectionCoverage(kind,raw);send(200,{ok:true,data,...(coverage?{coverage}:{})});return;
+        const data=assertData(kind,raw),coverage=collectionCoverage(kind,raw);
+        let historyResult;
+        if(kind==='events'){
+          if(JSON.stringify(beforeHistory)!==JSON.stringify(await historyScope()))throw engineError('SUBJECT_SCOPE_UNVERIFIED','');
+          try { historyResult={status:'saved',...await history.append(historyPartition(beforeHistory),mode,data)}; }
+          catch { historyResult={status:'error',code:'HISTORY_SAVE_FAILED'}; }
+        }
+        send(200,{ok:true,data,...(coverage?{coverage}:{}),...(historyResult?{history:historyResult}:{})});return;
       }
       if(req.method==='POST'&&url.pathname==='/api/access'){
         const input=await bounded(()=>jsonBody(req,['appId']));let raw;
