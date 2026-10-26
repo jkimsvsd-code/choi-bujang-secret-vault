@@ -103,7 +103,7 @@ export function createStudentView({api} = {}) {
         return root;
       }
       if (status === 'error') {
-        add(root, 'p', `기록을 불러오지 못했습니다: ${error?.message ?? '오류 메시지 확인 불가'}`);
+        add(root, 'p', `기록을 불러오지 못했습니다: ${error?.message ?? '오류 메시지 확인 불가'} · 다음: 연결 상태를 확인한 뒤 위쪽 다시 불러오기를 누르세요.`);
         return root;
       }
       if (status !== 'ok') {
@@ -115,7 +115,8 @@ export function createStudentView({api} = {}) {
         return root;
       }
       const events = [...data].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
-      add(root, 'h3', '기록 타임라인');
+      add(root, 'h3', '이번에 받은 보안 기록');
+      add(root,'p',`이번 조회 ${events.length}건 · 접속 기록 ${events.filter(e=>e.kind==='access').length}건 · XDR 경보 ${events.filter(e=>e.kind==='xdr').length}건 · 경보 수는 공격 확정 건수가 아닙니다.`);
       add(root, 'p', '이번 조회의 사건 발생 시각 최신순입니다. 조회 확인 시각은 화면 위쪽에서 확인하세요. 과거 조회 이력을 누적 저장하지 않습니다.');
       const kindText = (value) => `${value === 'access' ? '접속 기록' : value === 'xdr' ? 'XDR 경보' : '확인 불가'}(${value})`;
       const appText = (value) => value || '앱을 확인할 수 없습니다';
@@ -126,8 +127,10 @@ export function createStudentView({api} = {}) {
         { name: '업무 앱', read: (event) => event.appId, text: appText },
         { name: '접속 상태', read: (event) => event.state.access, text: (value) => stateText(accessLabels, value) },
       ];
+      let extra;
       for (const filter of filters) {
-        const label = add(root, 'label', filter.name);
+        if(filter===filters[1]){extra=add(root,'details','');add(extra,'summary','추가 필터 · 업무 앱 / 접속 상태');}
+        const label = add(filter===filters[0]?root:extra, 'label', filter.name);
         filter.select = add(label, 'select', '');
         filter.select.setAttribute('aria-label', filter.name);
         add(filter.select, 'option', '전체').value = 'all';
@@ -148,9 +151,7 @@ export function createStudentView({api} = {}) {
       });
       const list = add(root, 'ol', '');
       list.setAttribute('aria-label', '사건 발생 시각순 기록 타임라인');
-      const detail = add(root, 'div', '');
-      const showDetail = (event) => {
-        detail.replaceChildren();
+      const showDetail = (event,detail) => {
         const section = add(detail, 'section', '');
         section.setAttribute('data-student-event-detail', event.id);
         add(section, 'h3', `${event.id} 상세`);
@@ -178,7 +179,6 @@ export function createStudentView({api} = {}) {
       };
       const renderList = () => {
         list.replaceChildren();
-        detail.replaceChildren();
         const visible = events.filter((event) => filters.every((filter) =>
           filter.select.value === 'all' || filter.read(event) === filter.select.value));
         count.textContent = `표시된 기록: ${visible.length}건 · 이번 조회 ${events.length}건 중`;
@@ -190,12 +190,11 @@ export function createStudentView({api} = {}) {
           row.style.marginBlock = '0.75rem';
           add(row, 'p', `사건 발생 시각: ${event.at}`);
           add(row, 'h4', event.summary);
-          add(row, 'p', `사건 ID: ${event.id} · 종류: ${kindText(event.kind)} · 앱: ${appText(event.appId)}`);
-          add(row, 'p', sourceText);
+          add(row, 'p', `${kindText(event.kind)} · ${stateText(accessLabels,event.state.access)} · ${mode==='demo'?'예제':mode==='connected'?'연결 원천':'출처 확인 불가'}`);
           row.setAttribute('data-student-event-id', event.id);
-          const button = add(row, 'button', `${event.id} 상세`);
-          button.type = 'button';
-          button.addEventListener('click', () => showDetail(event));
+          const detail=add(row,'details','');detail.open=false;
+          add(detail,'summary',`${event.id} 상세 · 근거와 상태`);
+          showDetail(event,detail);
         }
       };
       renderList();

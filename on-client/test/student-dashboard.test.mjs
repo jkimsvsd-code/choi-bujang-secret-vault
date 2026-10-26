@@ -57,3 +57,13 @@ test('cards expose source, summary and time while detail stays collapsed after r
   assert.match(visible,/조회된 기록 0건/);assert.match(visible,/예제 자료/);assert.match(visible,/원천 확인 시각/);assert.match(visible,/2026/);
   assert.equal(buttons(root)[1].attrs['aria-label'],'보안 기록 다시 조회');
 });
+
+test('each event owns collapsed details; extra filters are collapsed',()=>{
+  const view=createStudentView();
+  const event=id=>({id,kind:'access',summary:id,at:'2026-10-27T00:00:00Z',appId:'app',state:{access:'denied',session:'active',device:'unknown'},evidence:[],rules:[],supportedActions:[]});
+  const root=view.renderEvents({status:'ok',mode:'demo',data:[event('a'),event('b')]});
+  const selects=walk(root).filter(n=>n.tagName==='select');for(const select of selects)select.value='all';selects[0].listeners.change();
+  const items=walk(root).filter(n=>n.attrs['data-student-event-id']);assert.equal(items.length,2);
+  for(const item of items){const detail=item.children.find(n=>n.tagName==='details');assert.equal(detail.open,false);assert.match(detail.textContent,new RegExp(item.attrs['data-student-event-id']+' 상세'));}
+  assert.ok(walk(root).find(n=>n.tagName==='summary'&&n.textContent.includes('추가 필터')));
+});
