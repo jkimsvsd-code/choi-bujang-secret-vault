@@ -253,7 +253,84 @@ export function createStudentView() {
       });
       return root;
     },
-    renderVulnerabilities() { return '학생 구현 대기: 정확한 설치 버전·OSV 출처·조회 시각·부분 결과·조회 실패를 구분하세요.'; },
+    renderVulnerabilities({ status, mode, data, error }) {
+      const root = document.createElement('div');
+      root.setAttribute('aria-live', 'polite');
+      const add = (parent, tag, text) => {
+        const element = document.createElement(tag);
+        element.textContent = text;
+        parent.appendChild(element);
+        return element;
+      };
+      if (mode === 'demo') add(root, 'p', '예제 자료(demo)');
+      if (status !== 'ok') {
+        const message = status === 'idle' ? '조회 전(idle)'
+          : status === 'loading' ? '조회 중(loading)'
+          : status === 'error' ? `조회 실패(error): ${error?.message ?? '오류 메시지 확인 불가'}`
+          : '조회 상태 확인 불가';
+        add(root, 'p', message);
+        return root;
+      }
+      const scanLabels = {
+        complete: '모두 조회',
+        partial: '일부 조회 실패',
+        not_checked: '아직 조회 안 함 · 승인된 공개 조회 대상 없음',
+        not_configured: '조회 대상 프로젝트 설정 필요',
+        unverifiable: 'lock 파일 확인 불가',
+      };
+      if (!data || !Object.hasOwn(scanLabels, data.status) || !Array.isArray(data.packages)) {
+        add(root, 'p', '조회 결과 확인 불가: 응답 형식을 확인할 수 없습니다.');
+        return root;
+      }
+      add(root, 'p', `${scanLabels[data.status]}(${data.status})`);
+      add(root, 'p', '조회 대상은 package-lock.json과 설치된 node_modules의 메타데이터를 대조한 패키지이며, 담당자가 허용한 공개 패키지만 OSV에서 조회합니다.');
+      const field = (parent, label, value) => {
+        if (value !== undefined && value !== null) add(parent, 'p', `${label}: ${value}`);
+      };
+      field(root, 'lock 파일 형식 버전(lockfileVersion)', data.lockfileVersion);
+      field(root, 'lock 파일 해시(lockfileHash)', data.lockfileHash);
+      field(root, '확인 시각(checkedAt)', data.checkedAt);
+      add(root, 'p', 'OSV는 알려진 취약점 데이터베이스입니다. 조회 범위에서 알려진 항목이 없더라도 패키지나 앱 전체의 안전을 보장하지 않습니다.');
+      if (data.packages.length === 0) {
+        add(root, 'p', '표시할 패키지 결과가 없습니다. 미조회·확인 불가 상태는 취약점 없음이 아닙니다.');
+        return root;
+      }
+      const table = add(root, 'table', '');
+      add(table, 'caption', '설치 패키지의 정확한 버전과 OSV 조회 결과');
+      const header = add(add(table, 'thead', ''), 'tr', '');
+      for (const title of ['패키지 이름(name)', '설치 버전(version)', '조회 상태(status)', '출처(source)', '확인 시각(checkedAt)', '취약점']) {
+        add(header, 'th', title).setAttribute('scope', 'col');
+      }
+      const body = add(table, 'tbody', '');
+      const packageLabels = {
+        known_vulnerabilities: '알려진 항목 있음',
+        none_found: '조회 범위에서 알려진 항목 없음',
+        unverifiable: '조회 확인 불가',
+      };
+      for (const pkg of data.packages) {
+        const row = add(body, 'tr', '');
+        if (pkg.name != null) row.setAttribute('data-student-package-name', pkg.name);
+        if (pkg.version != null) row.setAttribute('data-student-package-version', pkg.version);
+        add(row, 'td', pkg.name ?? '이름 미제공');
+        add(row, 'td', pkg.version ?? '설치 버전 미제공');
+        const findings = pkg.vulnerabilities ?? [];
+        const label = pkg.status === 'unverifiable' && findings.length > 0
+          ? '일부 확인 · 전체 조회 확인 불가'
+          : packageLabels[pkg.status] ?? '조회 상태 확인 불가';
+        add(row, 'td', `${label}(${pkg.status})`);
+        add(row, 'td', pkg.source ?? '출처 미제공');
+        add(row, 'td', pkg.checkedAt ?? '확인 시각 미제공');
+        const details = add(row, 'td', '');
+        for (const finding of findings) {
+          const item = add(details, 'div', '');
+          field(item, '취약점 ID(id)', finding.id);
+          field(item, '수정 시각(modified)', finding.modified);
+        }
+        if (findings.length === 0) add(details, 'p', pkg.status === 'none_found'
+          ? '조회 범위에서 알려진 항목이 없습니다.' : '제공된 취약점 항목이 없습니다. 취약점 없음으로 판단할 수 없습니다.');
+      }
+      return root;
+    },
     renderAiConnection({ status, mode, data, error, checkedAt, explanationAccepted }) {
       const root = document.createElement('div');
       root.setAttribute('role', 'status');
