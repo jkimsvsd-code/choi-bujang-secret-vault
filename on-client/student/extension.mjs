@@ -377,6 +377,67 @@ export function createStudentView() {
       }
       return root;
     },
-    renderAction() { return '학생 구현 대기: 현재 사건·조치·실제 대상·사람 확인·ACK와 원천 효과·unknown을 구분하세요.'; },
+    renderAction({ status, event, actionId, target, receipt, observation, message, confirmationExpiresAt, error }) {
+      // 호출마다 새 요소를 반환하며, 제공 화면이 이전 학생 표시를 교체한다.
+      const root = document.createElement('div');
+      root.setAttribute('role', 'status');
+      const add = (text) => {
+        const element = document.createElement('p');
+        element.textContent = text;
+        root.appendChild(element);
+      };
+      const field = (label, value) => {
+        if (value !== undefined && value !== null) add(`${label}: ${value}`);
+      };
+      const labels = {
+        idle: '아직 미실행(idle)',
+        loading: '조치 준비 또는 결과 조회 중(loading) · 결과가 아직 확인되지 않았습니다.',
+        prepared: '준비됨·미실행(prepared)',
+        executing: '서버에 전달 중(executing) · 결과가 아직 없습니다.',
+        pending: '서버 접수·처리 중(pending) · 접수 응답(ACK)은 효과 확인이 아닙니다. 결과가 아직 확인되지 않았습니다.',
+        denied: '거절(denied)',
+        failed: '실패(failed)',
+        expired: '확인 기한 지남(expired) · 제공 화면에서 「조치 준비」를 다시 진행하세요.',
+        error: '요청 처리 안 됨(error)',
+      };
+      const confirmed = status === 'succeeded' && observation?.effectApplied === true;
+      if (confirmed) {
+        add('효과 확인(succeeded)');
+        add(`관측 시각(observation.observedAt): ${observation.observedAt ?? '확인 불가'}`);
+        add('effectApplied: true');
+        if (receipt?.receiptId == null) add('receiptId: 확인 불가');
+      } else if (Object.hasOwn(labels, status)) {
+        add(labels[status]);
+      } else {
+        add(`결과 불명(unknown) · 입력 status: ${status ?? '확인 불가'}`);
+        add('성공이나 효과 없음으로 판단하지 마세요. 제공 화면의 「연동 시스템 결과만 재조회」를 사용하세요.');
+      }
+      if (event?.id != null) root.setAttribute('data-student-action-event', event.id);
+      if (receipt?.requestId != null) root.setAttribute('data-student-action-request', receipt.requestId);
+      field('사건 ID(event.id)', event?.id);
+      for (const evidence of event?.evidence ?? []) field('근거 ID', evidence.id);
+      field('조치(actionId)', actionId);
+      field('실제 대상(target.id)', target?.id);
+      field('대상 세대(target.generation)', target?.generation);
+      field('요청 ID(requestId)', receipt?.requestId);
+      field('접수 ID(receiptId)', receipt?.receiptId);
+      field('결과 버전(version)', receipt?.version);
+      field('확인 기한(confirmationExpiresAt)', confirmationExpiresAt);
+      // 오류는 제공 화면이 안전하게 정리한 code·message만 표시한다.
+      if (status === 'error') {
+        field('오류 코드', error?.code);
+        add(`오류 메시지: ${error?.message ?? '확인 불가'}`);
+      }
+      if (status === 'denied' || status === 'failed') add(`사유: ${message ?? error?.message ?? '확인 불가'}`);
+      if (status === 'prepared') {
+        add('AI 제안과 조치 준비만으로 실행되지 않습니다. 현재 사건·근거·조치·실제 대상·확인 기한을 확인한 뒤 제공 화면의 「대상과 조치를 확인했으며 집행합니다」를 사용하세요.');
+      }
+      if (event?.supportedActions?.length === 0) {
+        add('현재 기록은 연동 시스템이 지원하는 조치가 없어 「조치 준비」 버튼이 표시되지 않는 것이 정상입니다.');
+      }
+      add('중복 집행을 요청하지 마세요. 전달된 요청은 제공 화면의 「연동 시스템 결과만 재조회」로 확인하세요.');
+      add('「조치 화면 취소」는 화면을 초기화하며, 이미 서버에 전달된 조치 효과를 되돌리지 않습니다.');
+      return root;
+    },
   };
 }
