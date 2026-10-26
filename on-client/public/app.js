@@ -3,6 +3,7 @@
 // 자동 재시도 없음: 모든 요청은 사용자 동작 또는 최초 1회 로드에서만 일어난다.
 import { normalizeScan, createVulnerabilitiesView } from '/vulnerabilities-view.mjs';
 import { createHistoryView } from '/history-view.mjs';
+import { createPcStatusView } from '/pc-status-view.mjs';
 let historyView;
 
 const STUDENT_MODULE = '/student/extension.mjs';
@@ -1336,6 +1337,7 @@ async function loadAll() {
 }
 
 function init() {
+  createPcStatusView($('pc-status'),request);
   historyView=createHistoryView($('query-history'),request);
   setupNav();
   $('refresh').addEventListener('click', () => loadAll());

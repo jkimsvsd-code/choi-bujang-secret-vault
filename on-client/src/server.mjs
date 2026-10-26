@@ -1,5 +1,6 @@
 import http from 'node:http';
 import {createHistoryStore} from './history/store.mjs';
+import {createPcSampler} from './pc-status.mjs';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {resolve} from 'node:path';
@@ -199,6 +200,11 @@ export function createOnServer(serverOptions={}) {
   if(!serverOptions||typeof serverOptions!=='object'||types.isProxy(serverOptions))throw Error('INVALID_SERVER_AI_CONFIGURATION');
   const history=createHistoryStore({directory:serverOptions.historyDirectory,clock:serverOptions.clock});
   files.set('/history-view.mjs','public/history-view.mjs');
+  files.set('/pc-status-view.mjs','public/pc-status-view.mjs');
+  const pcHistory=createHistoryStore({directory:serverOptions.historyDirectory,clock:serverOptions.clock,category:'pc'});
+  const samplePc=serverOptions.pcSampler??createPcSampler();
+  const pcScope=['local-pc',root];
+  let pcBusy=false;
   const sdpDescriptor=Object.getOwnPropertyDescriptor(serverOptions,'sdpHostEngine');let sdpHostEngine=null;
   if(sdpDescriptor){
     if(!Object.hasOwn(sdpDescriptor,'value')||!sdpDescriptor.enumerable||sdpDescriptor.value!==undefined&&!isOwnedSdpHostEngine(sdpDescriptor.value))throw Error('INVALID_SERVER_AI_CONFIGURATION');
@@ -395,6 +401,23 @@ export function createOnServer(serverOptions={}) {
         const input=await bounded(()=>jsonBody(req,keys,(_key,value)=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)));
         const output=await bounded(signal=>connections[kind](input,{signal}));
         send(output.status,output.body);return;
+      }
+      if(req.method==='POST'&&url.pathname==='/api/pc-status'){
+        await bounded(()=>jsonBody(req,[]));
+        if(pcBusy){send(409,{ok:false,error:{code:'PC_BUSY',message:'PC 측정 중입니다. 완료 후 다시 요청하세요.',retryable:false}});return;}
+        pcBusy=true;
+        try {
+          const sample=await bounded(()=>samplePc());
+          let saved=false;
+          try{await pcHistory.appendMeasurement(pcScope,sample);saved=true;}catch{}
+          send(200,{ok:true,data:{...sample,saved}});
+        }finally{pcBusy=false;}
+        return;
+      }
+      if(req.method==='GET'&&url.pathname==='/api/pc-status/history'){
+        try{send(200,{ok:true,data:await pcHistory.read(pcScope)});}
+        catch{send(503,{ok:false,error:{code:'PC_HISTORY_UNAVAILABLE',message:'PC 측정 이력을 읽지 못했습니다.',retryable:false}});}
+        return;
       }
       const historyScope=async()=>{
         if(mode==='demo')return ['demo',resolve(assetsRoot)];

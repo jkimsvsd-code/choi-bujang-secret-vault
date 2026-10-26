@@ -1,5 +1,45 @@
 /* Alekov 학생 클라이언트 — 자체 작성 CSS. 외부 폰트·라이브러리·이미지 없음. PC 1280px 이상 기준. */
 
+/* Student PC summary: scoped to avoid changing the provided screens. */
+#pc-status .pc-controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:16px 0; }
+#pc-status .pc-controls label { display:flex; align-items:center; gap:8px; }
+#pc-status select { font:inherit; padding:8px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); }
+#pc-status .pc-measure { background:var(--accent); color:white; border-color:var(--accent); }
+#pc-status .pc-measure:hover:not(:disabled) { color:white; background:#19449d; }
+#pc-status .pc-help { color:var(--muted); margin:12px 0; }
+#pc-status summary { cursor:pointer; padding:10px 4px; }
+#pc-status .pc-status-message { background:var(--accent-soft); border-radius:6px; padding:10px 12px; }
+#pc-status .pc-metric-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr)); gap:12px; margin:12px 0; }
+#pc-status .pc-metric { min-width:0; padding:16px; border:1px solid var(--border); border-top:3px solid var(--accent); border-radius:8px; background:var(--surface); overflow-wrap:anywhere; }
+#pc-status .pc-metric h4 { color:var(--text); font-size:1rem; }
+#pc-status .pc-value { font-size:2rem; font-weight:700; font-variant-numeric:tabular-nums; margin:10px 0; line-height:1.25; }
+#pc-status .pc-unit { font-size:1rem; font-weight:500; color:var(--muted); }
+#pc-status .pc-time, #pc-status .pc-meta { font-size:.85rem; color:var(--muted); }
+#pc-status .pc-change { border-top:1px solid var(--border); padding-top:10px; font-size:.9rem; }
+#pc-status .pc-source { display:inline-block; font-size:.8rem; padding:2px 9px; border-radius:12px; color:var(--student); background:var(--student-soft); }
+#pc-status .pc-warning { color:var(--deny); font-weight:600; }
+#pc-status .pc-unknown { border-top-color:var(--challenge); background:var(--challenge-soft); }
+#pc-status .pc-history-heading { margin-top:24px; }
+#pc-status .pc-history-groups { list-style:none; padding:0; display:grid; gap:10px; }
+#pc-status .pc-history-groups > li { min-width:0; margin:0; padding:0 12px; border:1px solid var(--border); border-radius:8px; }
+#pc-status .pc-trend { margin:12px 0; }
+#pc-status .pc-trend figcaption { font-size:.85rem; font-weight:600; }
+#pc-status .pc-trend svg { display:block; width:100%; height:auto; overflow:visible; }
+#pc-status .pc-chart-grid { stroke:var(--border); stroke-width:1; }
+#pc-status .pc-chart-line { fill:none; stroke:var(--accent); stroke-width:2; }
+#pc-status .pc-chart-dot { fill:var(--accent); }
+#pc-status .pc-chart-label { fill:var(--muted); font-size:11px; font-variant-numeric:tabular-nums; }
+#pc-status .pc-chart-gap { fill:var(--deny); font-size:15px; }
+#pc-status .pc-table-wrap { max-width:100%; overflow-x:auto; margin:8px 0 16px; }
+#pc-status .pc-history-table { width:100%; min-width:850px; border-collapse:collapse; font-size:.85rem; font-variant-numeric:tabular-nums; }
+#pc-status .pc-history-table caption { text-align:left; padding:8px 0; color:var(--muted); }
+#pc-status .pc-history-table th, #pc-status .pc-history-table td { padding:10px; border:1px solid var(--border); text-align:left; vertical-align:top; overflow-wrap:anywhere; }
+#pc-status .pc-history-table thead { background:var(--accent-soft); }
+#pc-status .pc-history-table tbody th { min-width:170px; background:var(--bg); }
+#pc-status .pc-history-table td:nth-child(5) { min-width:200px; }
+#pc-status .pc-history-table th:nth-child(2), #pc-status .pc-history-table td:nth-child(2),
+#pc-status .pc-history-table th:nth-child(3), #pc-status .pc-history-table td:nth-child(3) { min-width:64px; white-space:nowrap; overflow-wrap:normal; }
+
 :root {
   --bg: #f5f6f8;
   --surface: #ffffff;

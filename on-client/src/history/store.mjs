@@ -5,9 +5,11 @@ import { createHash, randomUUID } from 'node:crypto';
 
 export const defaultHistoryDirectory = () => join(process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local'), 'Keshev', 'history');
 // No source identifiers, summaries, evidence, credentials or free text are persisted.
-export function createHistoryStore({ directory = defaultHistoryDirectory(), clock = () => new Date() } = {}) {
-  const file = join(directory, 'queries.json');
-  const lock = join(directory, 'queries.lock');
+export function createHistoryStore({ directory = defaultHistoryDirectory(), clock = () => new Date(), category = 'events' } = {}) {
+  if(!['events','pc'].includes(category))throw Error('HISTORY_CATEGORY');
+  const basename=category==='pc'?'pc-status':'queries';
+  const file = join(directory, `${basename}.json`);
+  const lock = join(directory, `${basename}.lock`);
   const scopeKey = scope => createHash('sha256').update(JSON.stringify(scope)).digest('hex');
   async function transaction(work) {
     await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -34,6 +36,22 @@ export function createHistoryStore({ directory = defaultHistoryDirectory(), cloc
     }
   }
   return {
+    appendMeasurement(scope, sample) {
+      if(category!=='pc'||sample.source!=='measured'||!Number.isFinite(Date.parse(sample.queriedAt))||!Array.isArray(sample.metrics)||sample.metrics.length!==3)throw Error('PC_SAMPLE_INVALID');
+      const metrics=sample.metrics.map(metric=>{
+        if(!['cpu','memory','disk'].includes(metric.kind)||!['ok','unknown'].includes(metric.status)||metric.unit!==(metric.kind==='cpu'?'%':'GiB')||typeof metric.target!=='string'||metric.target.length>100)throw Error('PC_SAMPLE_INVALID');
+        if(metric.status==='ok'){
+          if(!Number.isFinite(metric.value)||metric.value<0||metric.kind==='cpu'&&metric.value>100||!Number.isFinite(Date.parse(metric.measuredAt)))throw Error('PC_SAMPLE_INVALID');
+          return {kind:metric.kind,unit:metric.unit,target:metric.target,status:'ok',value:metric.value,measuredAt:metric.measuredAt,
+            ...(metric.kind==='cpu'?{startedAt:metric.startedAt,intervalMs:metric.intervalMs}:{})};
+        }
+        return {kind:metric.kind,unit:metric.unit,target:metric.target,status:'unknown',value:null,measuredAt:null,attemptedAt:metric.attemptedAt,reason:metric.reason};
+      });
+      return transaction(rows=>{
+        rows.unshift({scope:scopeKey(scope),queryId:randomUUID(),source:'measured',queriedAt:sample.queriedAt,metrics});
+        return () => ({saved:true});
+      });
+    },
     async append(scope, mode, events) {
       if (!['demo', 'connected'].includes(mode)) throw Error('HISTORY_MODE');
       const queriedAt = clock().toISOString();
