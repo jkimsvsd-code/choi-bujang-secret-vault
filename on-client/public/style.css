@@ -247,3 +247,16 @@ main:focus { outline: none; }
 .state-ok { background: var(--allow-soft); color: var(--allow); }
 .ai-result[data-state="connected"] { border-left: 3px solid var(--allow); padding-left: 12px; }
 .ai-result[data-state="unknown"] { border-left: 3px solid var(--unknown); padding-left: 12px; }
+
+/* PC 구성 조회: 기존 PC 측정 카드와 분리 */
+#pc-inspection .inspection-controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:16px 0; }
+#pc-inspection .inspection-notice { padding:12px; border-left:4px solid var(--challenge); background:var(--challenge-soft); }
+#pc-inspection section { border:1px solid var(--border); border-radius:8px; padding:14px; margin:16px 0; }
+#pc-inspection .inspection-timeline { list-style:none; padding:0; }
+#pc-inspection .inspection-timeline > li { border:1px solid var(--border); border-radius:8px; padding:14px; margin:12px 0; }
+#pc-inspection summary { cursor:pointer; font-weight:600; }
+#pc-inspection .inspection-table-wrap { overflow-x:auto; }
+#pc-inspection table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+#pc-inspection caption { text-align:left; color:var(--muted); padding:8px 0; }
+#pc-inspection th, #pc-inspection td { text-align:left; padding:10px; border:1px solid var(--border); overflow-wrap:anywhere; }
+#pc-inspection thead { background:var(--accent-soft); }

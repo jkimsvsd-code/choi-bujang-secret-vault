@@ -1,5 +1,23 @@
 # 케셰브 학생 실행 설명서 · 21단계
 
+## PC 구성·Windows 기록 읽기 전용 조회 — 2026-10-27
+
+기존 프로젝트에서 일반 권한 PowerShell로 `powershell -NoProfile -ExecutionPolicy Bypass -File .\on-client\tools\start-alekov.ps1 -Demo -Port 5196`를 실행합니다. 기존 5194 서버는 이전 코드로 동작하므로 그대로 보존하고 이번 확인은 5196를 사용합니다. 이미 5196가 실행 중이면 중복 실행하지 않습니다.
+
+1. http://127.0.0.1:5196/ → 보호 현황 → PC 구성·Windows 기록 → **PC 구성·기록 조회**를 누릅니다.
+2. 네트워크(IP/게이트웨이/DNS), 방화벽 프로필 설정, System·Application 각각의 경고(Level 3)·오류(Level 2)를 확인합니다. 건수의 범위는 조회 시작 시각까지 최근 24시간입니다. Critical(Level 1)은 오류 건수에 포함하지 않습니다. 현재 보존된 로그만 집계하므로 완전한 과거 사건 수나 침해·공격 탐지 결과가 아닙니다.
+3. 성공은 실측·시각·값·단위를 표시합니다. 거부/실패는 **확인 불가와 이유**를 표시하며 0건이나 예제로 대체하지 않습니다. 관리자 권한으로 실행된 프로세스에서는 조회 자체를 거절합니다. 일반 권한 접근 거부 시 승격하거나 설정을 바꾸지 않습니다.
+4. **SDP 상태 확인**을 별도로 누릅니다. demo/미구성은 SDP 미연결, 실제 호스트를 통한 활성 세션 조회만 연결 확인, 실패/근거 부족은 확인 불가입니다. 세션 확인은 업무 앱 터널의 연결 성공 증명이 아닙니다.
+5. 기록 종류 필터, 최신순 접이식 타임라인, **PC 구성 이력 조회**로 저장된 기록을 확인합니다. PC 조회와 이력 재조회는 SDP 상태를 변경하지 않습니다. 이전 SDP 상태에는 확인 시각이 붙습니다.
+
+학생 추가 구현: `src/pc-inspection.mjs`, `public/pc-inspection-view.mjs` 및 로컬 서버/이력 연결. 기존 제공 로그인·SDP 엔진은 재사용하고 CPU·메모리·디스크 기능은 보존합니다. 원격 PC 조회·이벤트 본문 수집·방화벽 변경·보안 설정 변경·공격/침투 모의 시험은 하지 않습니다. 고정된 읽기 명령만 숨김 PowerShell 프로세스로 실행하며 각 조회는 7.5초 제한입니다. 실패한 부분 집계를 정상 건수로 표시하지 않습니다.
+
+방화벽은 [Get-NetFirewallProfile의 ActiveStore](https://learn.microsoft.com/en-us/powershell/module/netsecurity/get-netfirewallprofile)로 적용 정책을 읽습니다. True/False는 프로필 활성 설정이며 현재 선택된 네트워크 프로필이 아닙니다. NotConfigured는 미지정으로 표시하고 허용/차단을 추정하지 않습니다. Windows 기록은 [EventLogReader](https://learn.microsoft.com/dotnet/api/system.diagnostics.eventing.reader.eventlogreader)로 시간 구간과 Level만 읽습니다.
+
+네트워크 주소를 포함한 조회 이력은 `%LOCALAPPDATA%\Keshev\history\pc-inspection.json`에만 저장하며 Git·제출 묶음에 넣지 않습니다. 기존 사건/성능 이력과 파일을 분리하고 최근 30일·최대 1,000회로 제한합니다. 외부 전송은 하지 않습니다. 예제 값을 실제 결과로 저장하지 않으며 자동 시험의 문서용 주소와 수치는 모의 입력입니다.
+
+검사: `node --test on-client/test/pc-inspection.test.mjs on-client/test/pc-status.test.mjs on-client/test/history.test.mjs` — 11개 통과. 모의 입력/임시 저장소 검사이며 실제 공격 시험이나 심판 판정이 아닙니다. 제한된 도구 실행에서는 네트워크·방화벽 접근 거부를 확인했습니다. 일반 Windows 사용자 실행에서는 네트워크 단일 CIM 조회, 방화벽 및 Windows 두 로그를 모두 읽었습니다. 네트워크는 IPEnabled=True 어댑터의 IP·서브넷·게이트웨이·DNS만 조회합니다. 서버 재시작 후 브라우저의 이력 재조회로 저장된 기록 복원도 확인했습니다. 다른 PC의 조회 권한이나 Inno Setup 설치 후 실행은 미검증입니다. 사용자 단위 setup.exe 방향은 유지하고 이번에는 설치 프로그램을 변경하지 않았습니다.
+
 ## 내 PC 상태와 직전 조회 대비 변화 — 2026-10-27
 
 제공 0.2.14의 내 기기는 보안 상태이며 CPU/메모리/디스크 측정 기능은 없었습니다. 이번 학생 추가 기능은 `src/pc-status.mjs`, `public/pc-status-view.mjs`와 로컬 서버 연결입니다. 제공 로그인·기기·세션과 기존 사건 타임라인은 보존합니다.

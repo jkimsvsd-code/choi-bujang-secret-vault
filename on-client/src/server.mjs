@@ -1,3 +1,4 @@
+import {createPcInspector} from './pc-inspection.mjs';
 import http from 'node:http';
 import {createHistoryStore} from './history/store.mjs';
 import {createPcSampler} from './pc-status.mjs';
@@ -204,7 +205,10 @@ export function createOnServer(serverOptions={}) {
   const pcHistory=createHistoryStore({directory:serverOptions.historyDirectory,clock:serverOptions.clock,category:'pc'});
   const samplePc=serverOptions.pcSampler??createPcSampler();
   const pcScope=['local-pc',root];
-  let pcBusy=false;
+  let pcBusy=false,inspectionBusy=false;
+  const inspectPc=serverOptions.pcInspector??createPcInspector();
+  const inspectionHistory=createHistoryStore({directory:serverOptions.historyDirectory,clock:serverOptions.clock,category:'inspection'});
+  files.set('/pc-inspection-view.mjs','public/pc-inspection-view.mjs');
   const sdpDescriptor=Object.getOwnPropertyDescriptor(serverOptions,'sdpHostEngine');let sdpHostEngine=null;
   if(sdpDescriptor){
     if(!Object.hasOwn(sdpDescriptor,'value')||!sdpDescriptor.enumerable||sdpDescriptor.value!==undefined&&!isOwnedSdpHostEngine(sdpDescriptor.value))throw Error('INVALID_SERVER_AI_CONFIGURATION');
@@ -401,6 +405,34 @@ export function createOnServer(serverOptions={}) {
         const input=await bounded(()=>jsonBody(req,keys,(_key,value)=>typeof value==='string'&&/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)));
         const output=await bounded(signal=>connections[kind](input,{signal}));
         send(output.status,output.body);return;
+      }
+      if(req.method==='GET'&&url.pathname==='/api/pc-inspection/sdp'){
+        let status='disconnected',reason='실제 SDP 연결이 구성되지 않았습니다.';
+        if(mode==='connected'){
+          if(!sdpHostEngine){status='unknown';reason='실제 SDP 호스트 연결 근거를 확인할 수 없습니다.';}
+          else try{
+            const identity=assertData('identity',await bounded(signal=>sdpHostEngine.readIdentity({signal})));
+            status=identity.session.status==='active'?'connected':'disconnected';
+            reason=status==='connected'?'SDP 호스트를 통한 현재 활성 세션 조회 확인. 업무 앱 터널 연결 성공을 뜻하지 않습니다.':'현재 활성 SDP 세션이 없습니다.';
+          }catch{status='unknown';reason='SDP 세션 조회 실패 또는 시간 초과. PC 조회 결과와 별개입니다.';}
+        }
+        send(200,{ok:true,data:{status,reason,checkedAt:clock().toISOString()}});return;
+      }
+      if(req.method==='POST'&&url.pathname==='/api/pc-inspection'){
+        await bounded(()=>jsonBody(req,[]));
+        if(inspectionBusy){send(409,{ok:false,error:{code:'PC_INSPECTION_BUSY',message:'PC 구성 조회 중입니다.',retryable:false}});return;}
+        inspectionBusy=true;
+        try{
+          const sample=await bounded(signal=>inspectPc({signal}));
+          let saved=false;try{await inspectionHistory.appendInspection(pcScope,sample);saved=true;}catch{}
+          send(200,{ok:true,data:{...sample,saved}});
+        }finally{inspectionBusy=false;}
+        return;
+      }
+      if(req.method==='GET'&&url.pathname==='/api/pc-inspection/history'){
+        try{send(200,{ok:true,data:await inspectionHistory.read(pcScope)});}
+        catch{send(503,{ok:false,error:{code:'PC_INSPECTION_HISTORY',message:'PC 구성 이력을 읽지 못했습니다.',retryable:false}});}
+        return;
       }
       if(req.method==='POST'&&url.pathname==='/api/pc-status'){
         await bounded(()=>jsonBody(req,[]));

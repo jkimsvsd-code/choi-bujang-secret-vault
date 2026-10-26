@@ -1,3 +1,4 @@
+import {createPcInspectionView} from '/pc-inspection-view.mjs';
 // Alekov 학생 클라이언트 — 제공 공통 UI.
 // 모든 외부·서버 문자열은 textContent로만 표시한다. innerHTML/insertAdjacentHTML 사용 금지.
 // 자동 재시도 없음: 모든 요청은 사용자 동작 또는 최초 1회 로드에서만 일어난다.
@@ -1337,6 +1338,7 @@ async function loadAll() {
 }
 
 function init() {
+  createPcInspectionView($('pc-inspection'),request);
   createPcStatusView($('pc-status'),request);
   historyView=createHistoryView($('query-history'),request);
   setupNav();
