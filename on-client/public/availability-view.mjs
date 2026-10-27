@@ -22,4 +22,3 @@ export function renderAvailability(root, state) {
   add(root,'p','SDP 연결: PC 조회 성공과 별개입니다. 보호 현황의 SDP 상태 확인 결과를 확인하세요. 예제 자료나 연결된 자료 표시만으로 SDP 연결 성공을 판단하지 않습니다.');
   add(root,'p','패키지·AI 기능: 별도 설정과 권한이 필요합니다. 앱 전체 모드가 아닌 각 기능의 조회·연결 결과를 확인하세요.');
 }
-
