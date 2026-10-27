@@ -1185,6 +1185,7 @@ function snapshot(resource) {
 
 // identity의 세 자료는 같은 세대의 응답만 담긴다(다시 불러오기 시 셋 모두 loading으로 초기화).
 function studentData(kind) {
+  if(kind==='guide')return {};
   if(kind==='action')return structuredClone(actionState);
   if (kind === 'aiConnection') return { ...snapshot(state.aiConnection), checkedAt: state.aiConnection.meta?.checkedAt ?? null, explanationAccepted: false };
   if (kind === 'explanation') return structuredClone({ event: state.selectedExplanation.event, explanation: snapshot(state.selectedExplanation.resource), checkedAt: state.selectedExplanation.resource.meta?.checkedAt ?? null });
@@ -1211,6 +1212,7 @@ function studentData(kind) {
 }
 
 const STUDENT_SLOTS = {
+  guide: { slot: 'student-guide', fn: 'renderGuide' },
   identity: { slot: 'student-identity', fn: 'renderIdentity' },
   decision: { slot: 'student-decision', fn: 'renderDecision' },
   events: { slot: 'student-events', fn: 'renderEvents' },

@@ -56,6 +56,7 @@ export function createStudentView({api} = {}) {
         element.textContent = text;
         root.appendChild(element);
       };
+      addText('업무 앱에서는 사용할 앱을 선택해 접속 가능 여부와 허용·거부 이유를 확인합니다. 접속 허용은 실제 서비스 연결 완료와 다를 수 있습니다.');
       if (status === 'idle') {
         addText('앱을 골라 접속을 요청하세요.');
       } else if (status === 'loading') {
@@ -92,6 +93,7 @@ export function createStudentView({api} = {}) {
         parent.appendChild(element);
         return element;
       };
+      add(root, 'p', '보안 기록에서는 받아 온 사건·접속 기록과 이전 조회 이력을 살펴봅니다. 기록 건수는 공격 확정 건수가 아닙니다.');
       const sourceText = mode === 'demo'
         ? '예제 자료 · 설명용 값이며 실제 PC 조회 결과가 아닙니다.'
         : mode === 'connected'
@@ -117,7 +119,7 @@ export function createStudentView({api} = {}) {
       const events = [...data].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
       add(root, 'h3', '이번에 받은 보안 기록');
       add(root,'p',`이번 조회 ${events.length}건 · 접속 기록 ${events.filter(e=>e.kind==='access').length}건 · XDR 경보 ${events.filter(e=>e.kind==='xdr').length}건 · 경보 수는 공격 확정 건수가 아닙니다.`);
-      add(root, 'p', '이번 조회의 사건 발생 시각 최신순입니다. 조회 확인 시각은 화면 위쪽에서 확인하세요. 과거 조회 이력을 누적 저장하지 않습니다.');
+      add(root, 'p', '이 목록은 이번 응답만 사건 발생 시각 최신순으로 표시합니다. 이전 조회의 시각·종류·출처는 아래 ‘내가 조회한 이력’에서 확인하세요. 사건 발생 시각은 사건이 일어난 때이며, 조회 시각은 내가 기록을 불러온 때입니다. 저장 이력에는 사건 원문을 보관하지 않습니다.');
       const kindText = (value) => `${value === 'access' ? '접속 기록' : value === 'xdr' ? 'XDR 경보' : '확인 불가'}(${value})`;
       const appText = (value) => value || '앱을 확인할 수 없습니다';
       const accessLabels = { allowed: '접속 허용', denied: '접속 거부', unknown: '확인 불가' };
@@ -553,11 +555,58 @@ function attachDashboard(legacy,api){
   const source=r=>r?.mode==='demo'?'예제 자료 · 설명용이며 실제 PC 조회값이 아닙니다.':r?.mode==='connected'?'연결 원천 자료 · PC 실측 및 터널 연결 성공과 별개입니다.':'출처 확인 불가 · 연결 상태를 확인하세요.';
   const root=document.createElement('div');root.setAttribute('data-student-dashboard','true');
   add(root,'h3','내 보안 현황');
-  add(root,'p','기기와 세션, 최근 기록, 패키지 조회를 확인하세요. PC 실측과 SDP 연결 상태는 별도입니다.');
+  root.tabIndex=-1;
+  legacy.renderGuide=()=>{
+    const container=document.createElement('div');
+  add(container,'p','보호 현황에서는 내 PC와 서비스의 최근 확인 상태를 살펴봅니다. 출처와 확인 시각을 확인하세요. 실시간 보호나 안전을 보장하는 판정은 아닙니다.');
+  add(container,'p','케셰브는 내 PC 상태와 연결된 서비스의 보안 기록을 확인하는 앱입니다.');
+  add(container,'p','처음이라면 ‘내 PC 상태 측정’을 눌러 보세요. 이 값은 실제 PC 조회 결과이며, 예제 기록과 SDP 연결 상태는 별도입니다. 읽지 못한 값은 확인 불가로 표시합니다.');
+  add(container,'p','현재 상태는 보호 현황, 업무 접속은 업무 앱, 사건과 조회 이력은 보안 기록에서 확인하세요.');
+    add(container,'p','업무 앱에서는 접속 가능 여부와 허용·거부 이유를 확인합니다. 허용은 실제 서비스 연결 완료와 다를 수 있습니다.');
+    add(container,'p','보안 기록에서는 이번 응답과 이전 조회 이력을 확인합니다. 사건 발생 시각과 내가 조회한 시각은 다르며, 기록 건수는 공격 확정 건수가 아닙니다.');
+    add(container,'p','첫 팝업의 더 이상 보지 않기는 같은 브라우저·주소(포트 포함)에 저장됩니다. 팝업을 숨겨도 이 탭에서 언제든 안내를 읽을 수 있습니다.');
+    return container;
+  };
+  const guideKey='keshev.student.onboarding.hidden.v1';
+  const guide=add(root,'dialog','');guide.setAttribute('aria-label','케셰브 첫 사용 안내');
+  Object.assign(guide.style,{maxWidth:'36rem',width:'calc(100% - 3rem)',maxHeight:'80vh',overflow:'auto',padding:'24px',border:'1px solid var(--border, #ccd1d8)',borderRadius:'12px',background:'var(--surface, #fff)',color:'inherit'});
+  add(guide,'h2','케셰브 사용 안내');
+  add(guide,'p','내 PC 상태와 연결된 서비스의 보안 기록을 확인하는 앱입니다.');
+  const steps=add(guide,'ul','');
+  add(steps,'li','보호 현황: PC·기기·세션의 최근 상태를 확인합니다. 처음이라면 내 PC 상태 측정을 눌러 보세요.');
+  add(steps,'li','업무 앱: 접속 가능 여부와 허용·거부 이유를 확인합니다. 허용은 실제 연결 완료를 뜻하지 않습니다.');
+  add(steps,'li','보안 기록: 이번에 받은 사건과 이전 조회 이력을 확인합니다. 기록 건수는 공격 확정 건수가 아닙니다.');
+  add(guide,'p','예제는 설명용입니다. 실제 PC 조회값은 출처·시각·단위를 확인하세요. 확인 불가와 SDP 미연결은 별도로 표시됩니다.');
+  const preference=add(guide,'label',''),hide=add(preference,'input','');hide.type='checkbox';
+  add(preference,'span',' 더 이상 보지 않기');
+  add(guide,'p','이 선택은 같은 브라우저·주소(포트 포함)에 저장됩니다. 저장소를 지우면 다시 나타납니다. 사용 안내 탭에서 언제든 내용을 확인할 수 있습니다.');
+  const dismiss=add(guide,'button','시작하기');dismiss.type='button';dismiss.setAttribute('data-guide-control','true');
+  const guideStatus=add(root,'p','');guideStatus.setAttribute('role','status');
+  let autoAttempted=false,returnFocus=null;
+  const readPreference=()=>{try{return globalThis.localStorage?.getItem(guideKey)==='true';}catch{return false;}};
+  function openGuide(){
+    if(guide.open)return;
+    hide.checked=readPreference();returnFocus=document.activeElement;
+    if(typeof guide.showModal!=='function'){guideStatus.textContent='이 브라우저는 안내 팝업을 지원하지 않습니다. 사용 안내 탭을 확인하세요.';return;}
+    guide.showModal();dismiss.focus();
+  }
+  function closeGuide(){
+    try{
+      if(!globalThis.localStorage)throw Error();
+      if(hide.checked)globalThis.localStorage.setItem(guideKey,'true');else globalThis.localStorage.removeItem(guideKey);
+      guideStatus.textContent=hide.checked?'다음 방문부터 자동 안내를 표시하지 않습니다. 사용 안내 탭에서 내용을 확인할 수 있습니다.':'';
+    }catch{guideStatus.textContent='안내 선택을 저장하지 못했습니다. 다음 방문에 안내가 다시 나타날 수 있습니다.';}
+    guide.close();
+    const target=returnFocus?.isConnected&&typeof returnFocus.focus==='function'&&returnFocus!==document.body?returnFocus:root;
+    target.focus();
+  }
+  dismiss.addEventListener('click',closeGuide);
+  guide.addEventListener('cancel',event=>{event.preventDefault();closeGuide();});
+  const showFirstGuide=()=>{if(!autoAttempted&&root.isConnected){autoAttempted=true;if(!readPreference())openGuide();}};
   const configs=[
     {key:'identity',title:'기기·세션',detail:'기기·세션 상세',paths:['/api/me','/api/devices','/api/sessions'],labels:['로그인','기기','세션']},
     {key:'events',title:'보안 기록',detail:'기록 보기',paths:['/api/events'],labels:['보안 기록']},
-    {key:'vulnerabilities',title:'패키지·취약점',detail:'패키지별 결과',paths:['/api/vulnerabilities'],labels:['설치 패키지·취약점']},
+    {key:'vulnerabilities',title:'패키지·취약점',buttonLabel:'패키지',detail:'패키지별 결과',paths:['/api/vulnerabilities'],labels:['설치 패키지·취약점']},
   ];
   const panels=new Map();
   for(const config of configs){
@@ -568,7 +617,8 @@ function attachDashboard(legacy,api){
     const provenance=add(section,'p','출처 확인 전');provenance.style.fontSize='.85rem';
     const checked=add(section,'p','확인 시각: 제공되지 않음');checked.style.fontSize='.85rem';
     const advice=add(section,'p','');
-    const button=add(section,'button','다시 조회');button.type='button';button.setAttribute('aria-label',`${config.title} 다시 조회`);
+    const targetLabel=config.buttonLabel||config.title;
+    const button=add(section,'button',`${targetLabel} 다시 조회`);button.type='button';button.setAttribute('aria-label',`${targetLabel} 다시 조회`);
     Object.assign(button.style,{padding:'8px 14px',border:'1px solid currentColor',borderRadius:'6px',background:'transparent',color:'inherit',font:'inherit',cursor:'pointer'});
     const details=add(section,'details','');details.style.marginTop='12px';details.open=false;add(details,'summary',config.detail);
     const body=add(details,'div','');
@@ -577,14 +627,14 @@ function attachDashboard(legacy,api){
       if(panel.busy)return;
       if(typeof api?.get!=='function'){status.textContent='조회 불가 · 학생 조회 API가 없습니다. 실행 버전과 학생 API 지원을 확인하세요.';return;}
       const generation=++panel.generation;panel.busy=true;button.setAttribute('aria-disabled','true');section.setAttribute('aria-busy','true');
-      button.textContent='조회 중…';status.textContent=`${config.labels.join('·')} 조회 중…`;provenance.textContent='출처: 응답 대기';checked.textContent='확인 시각: 응답 대기';advice.textContent='완료까지 기다려 주세요. 이전 결과는 현재 결과로 표시하지 않습니다.';body.replaceChildren();
+      button.textContent=`${targetLabel} 조회 중…`;status.textContent=`${config.labels.join('·')} 조회 중…`;provenance.textContent='출처: 응답 대기';checked.textContent='확인 시각: 응답 대기';advice.textContent='완료까지 기다려 주세요. 이전 결과는 현재 결과로 표시하지 않습니다.';body.replaceChildren();
       const results=await Promise.all(config.paths.map(async path=>{
         let timer;
         try{return await Promise.race([Promise.resolve().then(()=>api.get(path)),new Promise(resolve=>{timer=setTimeout(()=>resolve({ok:false,error:{code:'TIMEOUT'}}),12000);})]);}
         catch{return {ok:false,error:{code:'REQUEST_FAILED'}};}finally{clearTimeout(timer);}
       }));
       if(generation!==panel.generation)return;
-      panel.busy=false;button.textContent='다시 조회';button.removeAttribute('aria-disabled');section.setAttribute('aria-busy','false');
+      panel.busy=false;button.textContent=`${targetLabel} 다시 조회`;button.removeAttribute('aria-disabled');section.setAttribute('aria-busy','false');
       const resources=results.map(r=>r?.ok===true?{status:'ok',mode:r.meta?.mode,data:r.data,checkedAt:r.meta?.checkedAt}:{status:'error',error:{code:r?.error?.code||'INVALID_RESPONSE'}});
       display(panel,resources,true);
     });
@@ -651,13 +701,13 @@ function attachDashboard(legacy,api){
   function sync(key,resources){
     const p=panels.get(key),signature=JSON.stringify(resources);
     if(signature===p.signature)return;
-    p.signature=signature;p.generation++;p.busy=false;p.button.textContent='다시 조회';p.button.removeAttribute('aria-disabled');p.section.setAttribute('aria-busy','false');display(p,resources);
+    p.signature=signature;p.generation++;p.busy=false;p.button.textContent=`${p.buttonLabel||p.title} 다시 조회`;p.button.removeAttribute('aria-disabled');p.section.setAttribute('aria-busy','false');display(p,resources);
   }
   const originalIdentity=legacy.renderIdentity,originalEvents=legacy.renderEvents,originalVulns=legacy.renderVulnerabilities;
   legacy.renderIdentity=function(input){
     sync('identity',[input.me,input.devices,input.sessions]);
     const container=document.createElement('div');container.appendChild(root);
-    const details=add(container,'details','');add(details,'summary','기존 로그인·기기·세션 상세');details.appendChild(originalIdentity(input));return container;
+    const details=add(container,'details','');add(details,'summary','기존 로그인·기기·세션 상세');details.appendChild(originalIdentity(input));queueMicrotask(showFirstGuide);return container;
   };
   legacy.renderEvents=function(input){sync('events',[input]);return originalEvents(input);};
   legacy.renderVulnerabilities=function(input){sync('vulnerabilities',[input]);return originalVulns(input);};

@@ -281,3 +281,8 @@ main:focus { outline: none; }
 #query-history table { width:100%; border-collapse:collapse; }
 #query-history th, #query-history td { text-align:left; padding:10px; border:1px solid var(--border); }
 #query-history caption { text-align:left; margin:8px 0; color:var(--muted); }
+
+/* Protection overview: three equal cards, followed by the full-width student area. */
+.identity-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.identity-overview-grid > .card { min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; }
+@media (max-width: 1100px) { .identity-overview-grid { grid-template-columns: 1fr; } }
