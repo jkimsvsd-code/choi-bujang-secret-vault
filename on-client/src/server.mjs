@@ -200,6 +200,7 @@ async function jsonBody(req,keys,validate=(key,value)=>id(value)) {
 export function createOnServer(serverOptions={}) {
   if(!serverOptions||typeof serverOptions!=='object'||types.isProxy(serverOptions))throw Error('INVALID_SERVER_AI_CONFIGURATION');
   const history=createHistoryStore({directory:serverOptions.historyDirectory,clock:serverOptions.clock});
+  files.set('/availability-view.mjs','public/availability-view.mjs');
   files.set('/history-view.mjs','public/history-view.mjs');
   files.set('/pc-status-view.mjs','public/pc-status-view.mjs');
   const pcHistory=createHistoryStore({directory:serverOptions.historyDirectory,clock:serverOptions.clock,category:'pc'});

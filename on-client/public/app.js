@@ -1,3 +1,4 @@
+import { renderAvailability } from '/availability-view.mjs';
 import {createPcInspectionView} from '/pc-inspection-view.mjs';
 // Alekov 학생 클라이언트 — 제공 공통 UI.
 // 모든 외부·서버 문자열은 textContent로만 표시한다. innerHTML/insertAdjacentHTML 사용 금지.
@@ -392,6 +393,7 @@ function currentMode() {
 }
 
 function renderMode() {
+  renderAvailability($('availability'), state);
   const badge = $('mode-badge');
   const mode = currentMode();
   badge.dataset.mode = mode;
