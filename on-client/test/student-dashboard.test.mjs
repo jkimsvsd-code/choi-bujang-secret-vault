@@ -164,3 +164,16 @@ test('automatic onboarding persists dismissal without a help button; guide remai
     assert.equal(fourthDialog.open,false);
   }finally{Object.defineProperty(globalThis,'localStorage',{configurable:true,value:previous});}
 });
+
+
+test('start only requests navigation, Escape does not, and guide has ordered sections',async()=>{
+  let moves=0,requests=0;
+  const mount=async()=>{const result=setup({focusPcMeasurement(){moves++;return true;},get(){requests++;throw Error('unexpected query');}});walk(result.root).find(n=>n.attrs['data-student-dashboard']).isConnected=true;await Promise.resolve();return result;};
+  const first=await mount();const dialog=walk(first.root).find(n=>n.tagName==='dialog');
+  walk(dialog).find(n=>n.tagName==='button').listeners.click();
+  assert.equal(moves,1);assert.equal(requests,0);assert.equal(dialog.open,false);
+  const second=await mount();const other=walk(second.root).find(n=>n.tagName==='dialog');
+  other.listeners.cancel({preventDefault(){}});
+  assert.equal(moves,1);assert.equal(requests,0);assert.equal(other.open,false);
+  assert.deepEqual(walk(first.view.renderGuide()).filter(n=>n.tagName==='h2').map(n=>n.textContent),['앱 목적','처음 할 일','탭별 역할','결과 읽는 법']);
+});

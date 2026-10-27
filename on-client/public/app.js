@@ -1248,6 +1248,14 @@ function renderAllStudent() {
 }
 
 const studentApi = Object.freeze({
+  focusPcMeasurement() {
+    const button = document.querySelector('#pc-status .pc-measure');
+    if (!button || button.disabled) return false;
+    selectView('protection');
+    button.scrollIntoView({ block: 'center', behavior: 'instant' });
+    button.focus({ preventScroll: true });
+    return true;
+  },
   get(path) {
     if (!STUDENT_GET_PATHS.includes(path)) {
       return Promise.resolve(localFailure('NOT_ALLOWED', '학생 구현에서 허용되지 않은 주소입니다.', UNKNOWN_META));

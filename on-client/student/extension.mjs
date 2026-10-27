@@ -558,13 +558,25 @@ function attachDashboard(legacy,api){
   root.tabIndex=-1;
   legacy.renderGuide=()=>{
     const container=document.createElement('div');
-  add(container,'p','보호 현황에서는 내 PC와 서비스의 최근 확인 상태를 살펴봅니다. 출처와 확인 시각을 확인하세요. 실시간 보호나 안전을 보장하는 판정은 아닙니다.');
-  add(container,'p','케셰브는 내 PC 상태와 연결된 서비스의 보안 기록을 확인하는 앱입니다.');
-  add(container,'p','처음이라면 ‘내 PC 상태 측정’을 눌러 보세요. 이 값은 실제 PC 조회 결과이며, 예제 기록과 SDP 연결 상태는 별도입니다. 읽지 못한 값은 확인 불가로 표시합니다.');
-  add(container,'p','현재 상태는 보호 현황, 업무 접속은 업무 앱, 사건과 조회 이력은 보안 기록에서 확인하세요.');
-    add(container,'p','업무 앱에서는 접속 가능 여부와 허용·거부 이유를 확인합니다. 허용은 실제 서비스 연결 완료와 다를 수 있습니다.');
-    add(container,'p','보안 기록에서는 이번 응답과 이전 조회 이력을 확인합니다. 사건 발생 시각과 내가 조회한 시각은 다르며, 기록 건수는 공격 확정 건수가 아닙니다.');
-    add(container,'p','첫 팝업의 더 이상 보지 않기는 같은 브라우저·주소(포트 포함)에 저장됩니다. 팝업을 숨겨도 이 탭에서 언제든 안내를 읽을 수 있습니다.');
+    add(container,'h2','앱 목적');
+    add(container,'p','케셰브는 내 PC 상태와 연결된 서비스의 보안 기록을 확인하는 앱입니다. 실시간 보호나 안전을 보장하는 판정은 아닙니다.');
+    add(container,'h2','처음 할 일');
+    const firstSteps=add(container,'ol','');
+    add(firstSteps,'li','처음이라면 ‘내 PC 상태 측정’을 눌러 보세요. 첫 팝업의 시작하기는 이 버튼으로 이동만 하며 자동 측정하지 않습니다.');
+    add(firstSteps,'li','보호 현황에서 측정값의 출처·확인 시각·단위를 확인하세요. 읽지 못한 값은 확인 불가로 표시합니다.');
+    add(firstSteps,'li','필요에 따라 업무 앱에서 접속을 요청하거나 보안 기록에서 사건 상세와 이전 조회 이력을 살펴보세요.');
+    add(container,'h2','탭별 역할');
+    add(container,'p','현재 상태는 보호 현황, 업무 접속은 업무 앱, 사건과 조회 이력은 보안 기록에서 확인하세요.');
+    const roles=add(container,'ul','');
+    add(roles,'li','보호 현황에서는 내 PC와 서비스의 최근 확인 상태를 살펴봅니다.');
+    add(roles,'li','업무 앱에서는 접속 가능 여부와 허용·거부 이유를 확인합니다. 허용은 실제 서비스 연결 완료와 다를 수 있습니다.');
+    add(roles,'li','보안 기록에서는 이번 응답과 이전 조회 이력을 확인합니다. 사용 안내에서는 이 설명을 언제든 다시 읽을 수 있습니다.');
+    add(container,'h2','결과 읽는 법');
+    const reading=add(container,'ul','');
+    add(reading,'li','예제는 설명용입니다. 실제 PC 조회값은 출처·시각·단위를 함께 확인하세요. 예제 기록과 SDP 연결 상태는 별도입니다. PC 조회 성공이 SDP 연결 성공을 뜻하지 않습니다.');
+    add(reading,'li','조회 전·실패·확인 불가는 정상이나 취약점 없음을 뜻하지 않습니다. 실패한 항목과 다음 행동 안내를 확인하세요.');
+    add(reading,'li','사건 발생 시각과 내가 조회한 시각은 다릅니다. 기록 건수는 공격 확정 건수가 아니며, 과거 이력은 현재 상태가 아닙니다.');
+    add(container,'p','첫 팝업의 더 이상 보지 않기는 같은 브라우저·주소(포트 포함)에 저장됩니다. 시작하기는 PC 측정 버튼으로 이동하고, Esc는 팝업만 닫습니다. 팝업을 숨겨도 이 탭에서 안내를 읽을 수 있습니다.');
     return container;
   };
   const guideKey='keshev.student.onboarding.hidden.v1';
@@ -600,7 +612,12 @@ function attachDashboard(legacy,api){
     const target=returnFocus?.isConnected&&typeof returnFocus.focus==='function'&&returnFocus!==document.body?returnFocus:root;
     target.focus();
   }
-  dismiss.addEventListener('click',closeGuide);
+  dismiss.addEventListener('click',()=>{
+    closeGuide();
+    try{
+      if(api?.focusPcMeasurement?.()!==true)guideStatus.textContent+=' 보호 현황의 내 PC 상태 측정 버튼을 직접 찾아 눌러 주세요. 자동 측정은 하지 않았습니다.';
+    }catch{guideStatus.textContent+=' PC 측정 버튼으로 이동하지 못했습니다. 보호 현황에서 직접 선택하세요.';}
+  });
   guide.addEventListener('cancel',event=>{event.preventDefault();closeGuide();});
   const showFirstGuide=()=>{if(!autoAttempted&&root.isConnected){autoAttempted=true;if(!readPreference())openGuide();}};
   const configs=[
