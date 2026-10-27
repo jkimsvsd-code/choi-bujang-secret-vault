@@ -132,7 +132,7 @@ export function createStudentView({api} = {}) {
       let extra;
       for (const filter of filters) {
         if(filter===filters[1]){extra=add(root,'details','');add(extra,'summary','추가 필터 · 업무 앱 / 접속 상태');}
-        const label = add(filter===filters[0]?root:extra, 'label', filter.name);
+        const label = add(filter===filters[0]?root:extra, 'label', filter.name); label.className = 'student-filter';
         filter.select = add(label, 'select', '');
         filter.select.setAttribute('aria-label', filter.name);
         add(filter.select, 'option', '전체').value = 'all';
@@ -146,7 +146,7 @@ export function createStudentView({api} = {}) {
       const count = add(root, 'p', `표시된 기록: ${events.length}건`);
       count.setAttribute('aria-live', 'polite');
       const reset = add(root, 'button', '필터 초기화');
-      reset.type = 'button';
+      reset.type = 'button'; reset.className = 'btn';
       reset.addEventListener('click', () => {
         for (const filter of filters) filter.select.value = 'all';
         renderList();
@@ -264,7 +264,7 @@ export function createStudentView({api} = {}) {
       else add('p', '연결 점검 전입니다. 제공 영역의 도움정보 불러오기 버튼을 누르세요.');
       add('p', '도움 요청에 사용할 위의 안전한 점검 항목만 복사합니다.');
       const copy = add('button', '도움정보 복사');
-      copy.type = 'button';
+      copy.type = 'button'; copy.className = 'btn';
       copy.disabled = safeText.length === 0;
       const copyStatus = add('p', '');
       copyStatus.setAttribute('role', 'status');
@@ -594,7 +594,7 @@ function attachDashboard(legacy,api){
         ['첫 팝업과 키보드','처음 온 사용자가 기능 위치를 알고 싶을 때 첫 팝업을 읽고 시작하기를 누르면 PC 측정 버튼으로 이동합니다. 측정은 직접 눌러야 실행되고 Esc는 팝업만 닫습니다. 다시 설명이 필요하면 사용 안내 탭을 엽니다. 메뉴는 방향키·Home·End, 일반 이동은 Tab·Shift+Tab, 버튼과 접이식 설명은 Enter·Space로 조작합니다. 더 이상 보지 않기는 같은 브라우저·주소에서만 기억합니다.']]]
     ];
     for(const [title,features] of featureGroups){
-      const details=add(container,'details','');add(details,'summary',title);
+      const details=add(container,'details','');details.className='student-guide-features';add(details,'summary',title);
       for(const [name,description] of features){add(details,'h3',name);add(details,'p',description);}
     }
     add(container,'h2','결과 읽는 법');
@@ -607,7 +607,7 @@ function attachDashboard(legacy,api){
   };
   const guideKey='keshev.student.onboarding.hidden.v1';
   const guide=add(root,'dialog','');guide.setAttribute('aria-label','케셰브vJ 첫 사용 안내');
-  Object.assign(guide.style,{maxWidth:'36rem',width:'calc(100% - 3rem)',maxHeight:'80vh',overflow:'auto',padding:'24px',border:'1px solid var(--border, #ccd1d8)',borderRadius:'12px',background:'var(--surface, #fff)',color:'inherit'});
+  Object.assign(guide.style,{position:'fixed',inset:'0',margin:'auto',maxWidth:'36rem',width:'calc(100% - 3rem)',maxHeight:'80vh',overflow:'auto',padding:'24px',border:'1px solid var(--border, #ccd1d8)',borderRadius:'12px',background:'var(--surface, #fff)',color:'inherit'});
   add(guide,'h2','케셰브vJ 사용 안내');
   add(guide,'p','이 PC 사용자가 상태나 접속 문제를 확인할 때 쓰는 앱입니다. 아래 탭에서 직접 조회하고 사용 안내에서 자세한 방법을 확인하세요.');
   const steps=add(guide,'ul','');
@@ -618,7 +618,7 @@ function attachDashboard(legacy,api){
   const preference=add(guide,'label',''),hide=add(preference,'input','');hide.type='checkbox';
   add(preference,'span',' 더 이상 보지 않기');
   add(guide,'p','이 선택은 같은 브라우저·주소(포트 포함)에 저장됩니다. 저장소를 지우면 다시 나타납니다. 사용 안내 탭에서 언제든 내용을 확인할 수 있습니다.');
-  const dismiss=add(guide,'button','시작하기');dismiss.type='button';dismiss.setAttribute('data-guide-control','true');
+  const dismiss=add(guide,'button','시작하기');dismiss.type='button';dismiss.className='btn';Object.assign(dismiss.style,{font:'inherit',padding:'10px 18px',borderRadius:'var(--radius, 8px)',border:'1px solid var(--accent, #2357c6)',background:'var(--accent, #2357c6)',color:'#fff',cursor:'pointer'});dismiss.setAttribute('data-guide-control','true');
   const guideStatus=add(root,'p','');guideStatus.setAttribute('role','status');
   let autoAttempted=false,returnFocus=null;
   const readPreference=()=>{try{return globalThis.localStorage?.getItem(guideKey)==='true';}catch{return false;}};

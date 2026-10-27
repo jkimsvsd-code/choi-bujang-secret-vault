@@ -293,3 +293,33 @@ main:focus { outline: none; }
 #availability th, #availability td { padding:10px; border:1px solid var(--border); text-align:left; vertical-align:top; overflow-wrap:anywhere; }
 #availability thead { background:var(--accent-soft); }
 #availability tbody th { font-weight:600; }
+
+/* Scoped control styling: preserve native selection, focus and disabled behavior. */
+#pc-inspection select, #student-events select, #query-history select,
+[data-student-dashboard] select {
+  font:inherit; min-height:38px; max-width:100%; padding:7px 10px;
+  border:1px solid var(--border); border-radius:var(--radius);
+  background:var(--surface); color:var(--text);
+}
+#student-events .student-filter, #pc-inspection .inspection-controls label,
+#query-history .history-controls label {
+  display:inline-flex; align-items:center; flex-wrap:wrap; gap:8px;
+}
+#student-events .student-filter { margin:8px 12px 8px 0; }
+#query-history .history-controls, #pc-inspection .inspection-controls {
+  display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:16px 0;
+}
+#query-history button {
+  font:inherit; min-height:38px; padding:7px 14px; border-radius:var(--radius);
+  border:1px solid var(--border); background:var(--surface); color:var(--text); cursor:pointer;
+}
+#query-history button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+#query-history button:disabled { cursor:not-allowed; opacity:.55; }
+#query-history > details > button {
+  display:block; margin-top:12px; border-color:var(--deny); color:var(--deny);
+}
+#query-history > details > button:hover:not(:disabled) { background:var(--deny-soft); border-color:var(--deny); color:var(--deny); }
+#student-guide .student-guide-features { margin:12px 0; }
+#student-guide .student-guide-features > summary { padding:10px 0; cursor:pointer; }
+#student-guide .student-guide-features > h3 { margin:16px 0 8px; }
+#student-guide .student-guide-features > p { margin:0 0 16px; }
