@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
-  <title>케셰브 · ZTNA &amp; XDR</title>
+  <title>케셰브vJ · ZTNA &amp; XDR</title>
   <link rel="stylesheet" href="/style.css">
   <script type="module" src="/app.js"></script>
 </head>
@@ -16,7 +16,7 @@
     <div class="brand">
       <img class="alekov-art brand-icon" src="/assets/alekov/alekov-app-icon.webp" alt="" aria-hidden="true" width="32" height="32" draggable="false">
       <span class="brand-mark" id="brand-mark-fallback" aria-hidden="true" hidden>A</span>
-      <span class="brand-name">케셰브 <small>ZTNA &amp; XDR 보안 Agent</small></span>
+      <span class="brand-name">케셰브vJ <small>ZTNA &amp; XDR 보안 Agent</small></span>
     </div>
     <div class="topbar-status">
       <span id="mode-badge" class="mode-badge" data-mode="loading" role="status" aria-live="polite">상태 확인 중</span>
@@ -75,8 +75,13 @@
         </div>
 
         <section class="card student" aria-labelledby="student-identity-title">
-          <h2 id="student-identity-title">학생 구현 표시 <span class="tag tag-student">student/extension.mjs · renderIdentity</span></h2>
+          <h2 id="student-identity-title">내 보안 현황</h2>
           <div id="student-identity" class="student-slot" aria-live="polite"></div>
+          <details>
+            <summary>구현 정보</summary>
+            <p>공통 화면은 제공 기능이며, 이 영역의 요약·재조회 표시는 학생 구현입니다.</p>
+            <p><code>student/extension.mjs · renderIdentity</code></p>
+          </details>
         </section>
 
         <section class="card student" aria-labelledby="student-status-title">

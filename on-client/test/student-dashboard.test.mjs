@@ -52,7 +52,7 @@ test('timeline preserves event-time ordering and native kind filter',async()=>{
 
 test('cards expose source, summary and time while detail stays collapsed after refresh',async()=>{
   const {root}=setup({get:async()=>({ok:true,meta:{mode:'demo',checkedAt:'2026-10-27T00:00:00Z'},data:[]})});
-  assert.match(root.textContent,/내 보안 현황/);
+  assert.equal(walk(root).some(n=>n.tagName==='h3'&&n.textContent==='내 보안 현황'),false);
   const card=walk(root).find(n=>n.attrs['aria-label']==='보안 기록');
   const details=card.children.find(n=>n.tagName==='details');assert.equal(details.open,false);
   await buttons(root)[1].listeners.click();assert.equal(details.open,false);
@@ -79,7 +79,7 @@ test('first-use guidance and target labels survive waiting, completion, failure 
   const labels=['기기·세션 다시 조회','보안 기록 다시 조회','패키지 다시 조회'];
   assert.deepEqual(controls.map(b=>b.textContent),labels);
   assert.deepEqual(controls.map(b=>b.attrs['aria-label']),labels);
-  assert.match(view.renderGuide().textContent,/케셰브는 내 PC 상태와 연결된 서비스의 보안 기록을 확인하는 앱/);
+  assert.match(view.renderGuide().textContent,/케셰브vJ는 내 PC 상태와 연결된 서비스의 보안 기록을 확인하는 앱/);
   assert.match(view.renderGuide().textContent,/처음이라면 ‘내 PC 상태 측정’/);
   assert.match(view.renderGuide().textContent,/예제 기록과 SDP 연결 상태는 별도/);
   const success=controls[1].listeners.click();await Promise.resolve();
@@ -149,10 +149,10 @@ test('automatic onboarding persists dismissal without a help button; guide remai
     const checkbox=walk(dialog).find(n=>n.tagName==='input'),dismiss=walk(dialog).find(n=>n.tagName==='button');
     assert.equal(dialog.open,true);assert.equal(document.activeElement,dismiss);
     assert.equal(walk(first.root).some(n=>n.tagName==='button'&&n.text==='사용 안내'),false);
-    assert.equal(first.dashboard.children.filter(n=>n.tagName==='p').some(n=>n.textContent.includes('케셰브는')),false);
+    assert.equal(first.dashboard.children.filter(n=>n.tagName==='p').some(n=>n.textContent.includes('케셰브vJ는')),false);
     checkbox.checked=true;dismiss.listeners.click();assert.equal(dialog.open,false);assert.equal(document.activeElement,first.dashboard);
     const second=await mount();assert.equal(walk(second.root).find(n=>n.tagName==='dialog').open,false);
-    assert.match(second.view.renderGuide().textContent,/케셰브는 내 PC 상태/);
+    assert.match(second.view.renderGuide().textContent,/케셰브vJ는 내 PC 상태/);
     assert.match(second.view.renderGuide().textContent,/현재 상태는 보호 현황/);
     values.clear();const third=await mount();const thirdDialog=walk(third.root).find(n=>n.tagName==='dialog');
     let prevented=false;thirdDialog.listeners.cancel({preventDefault(){prevented=true;}});
@@ -176,4 +176,20 @@ test('start only requests navigation, Escape does not, and guide has ordered sec
   other.listeners.cancel({preventDefault(){}});
   assert.equal(moves,1);assert.equal(requests,0);assert.equal(other.open,false);
   assert.deepEqual(walk(first.view.renderGuide()).filter(n=>n.tagName==='h2').map(n=>n.textContent),['앱 목적','처음 할 일','탭별 역할','결과 읽는 법']);
+});
+
+
+test('renamed guide includes collapsed feature instructions for every tab',()=>{
+  const guide=createStudentView().renderGuide();
+  assert.match(guide.textContent,/케셰브vJ/);
+  const details=walk(guide).filter(n=>n.tagName==='details');assert.equal(details.length,4);
+  assert.ok(details.every(n=>n.open===false));
+  for(const term of ['PC 측정·추이·이력','SDP 연결 상태','패키지·취약점','계정·AI 연결','접속 요청과 판정','내가 조회한 이력','AI 사건 설명','조치 준비·확인·결과','첫 팝업과 키보드'])assert.ok(guide.textContent.includes(term));
+  assert.match(guide.textContent,/PC가 느리거나/);
+});
+
+
+test('beginner guide explains benefits without claiming mandatory routing or automatic fixes',()=>{
+  const text=createStudentView().renderGuide().textContent;
+  for(const phrase of ['PC가 느릴 때','업무 앱에 접속하지 못할 때','반드시 이 탭을 거칠 필요는 없습니다','항상 더 안전해지거나','백신이나 자동 수리 도구는 아닙니다','세션은 서버가 관리하는 로그인 상태','소프트웨어 부품(패키지)','보안 약점(취약점)','담당자에게 문의'])assert.ok(text.includes(phrase),phrase);
 });

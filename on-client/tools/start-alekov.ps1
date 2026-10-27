@@ -154,7 +154,7 @@ if (-not $ready) {
   if (-not $process.HasExited) { $process.Kill() }
   Stop-With "앱 서버가 $WaitSeconds 초 안에 뜨지 않았습니다. 이 창의 메시지를 담당 강사에게 보여 주세요."
 }
-Say "케셰브가 켜졌습니다. 브라우저에서 $url 을 여세요."
+Say "케셰브vJ가 켜졌습니다. 브라우저에서 $url 을 여세요."
 Say '서버가 응답한 것만 확인했습니다. AI 연결 상태는 화면에서 따로 확인해 주세요.'
 if ($Background) {
   Say "뒤에서 실행 중입니다(프로세스 번호 $($process.Id)). 끄려면 이 번호의 node 를 작업 관리자에서 종료하세요."
