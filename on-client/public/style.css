@@ -286,3 +286,10 @@ main:focus { outline: none; }
 .identity-overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
 .identity-overview-grid > .card { min-width: 0; margin-bottom: 0; overflow-wrap: anywhere; }
 @media (max-width: 1100px) { .identity-overview-grid { grid-template-columns: 1fr; } }
+
+#availability .availability-table-wrap { max-width:100%; overflow-x:auto; margin:12px 0; }
+#availability table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+#availability caption { text-align:left; padding:8px 0; color:var(--muted); }
+#availability th, #availability td { padding:10px; border:1px solid var(--border); text-align:left; vertical-align:top; overflow-wrap:anywhere; }
+#availability thead { background:var(--accent-soft); }
+#availability tbody th { font-weight:600; }
