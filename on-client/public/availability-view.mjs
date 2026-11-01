@@ -8,11 +8,11 @@ export function describeAvailability(resource) {
   if (resource.meta?.mode === 'disconnected') return '확인 불가 · 연결 없음';
   return '확인 불가 · 출처 미확인';
 }
-export function renderAvailability(root, state) {
+export function renderAvailability(root, state, {demo=false}={}) {
   const add=(parent,tag,text)=>{const node=document.createElement(tag);node.textContent=text;parent.appendChild(node);return node;};
   root.replaceChildren();
-  add(root,'p','PC 상태·구성 조회: 이 PC를 일반 권한으로 직접 읽는 기능입니다. 버튼을 눌러야 조회하며, 성공 여부는 각 항목의 결과에서 확인하세요.');
-  add(root,'p','예제는 설명용이고 서버 자료는 실제 응답입니다. 어느 쪽도 PC 실측이나 실제 업무 접속 성공을 뜻하지 않습니다. 확인 불가 항목은 다시 조회하거나 연결 상태를 확인하세요.');
+  add(root,'p',demo?'데모 모드: 모든 수치·계정·기록은 설명용 예제입니다. PC 측정이나 서버 조회를 실행하지 않습니다.':'PC 상태·구성 조회: 이 PC를 일반 권한으로 직접 읽는 기능입니다. 버튼을 눌러야 조회하며, 성공 여부는 각 항목의 결과에서 확인하세요.');
+  add(root,'p',demo?'예제는 설명용이며 실제 PC 상태나 업무 접속 성공을 뜻하지 않습니다.':'서버 자료는 연결된 서비스의 응답입니다. PC 실측이나 실제 업무 접속 성공과는 구분하세요. 확인 불가 항목은 이유를 확인하고 다시 조회하세요.');
   add(root,'p','화면 전체 조회 기준입니다. 개별 카드에서 다시 조회한 결과는 해당 카드의 출처와 시각을 확인하세요.');
   const wrap=add(root,'div','');wrap.className='availability-table-wrap';wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label','현재 이용 범위 표');
   const table=add(wrap,'table','');add(table,'caption','최근 응답의 자료 구분과 확인 시각');
@@ -24,6 +24,6 @@ export function renderAvailability(root, state) {
     const stamp=typeof at==='string'&&Number.isFinite(Date.parse(at))?new Date(at).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',hour12:false})+' KST':'제공되지 않음';
     const row=add(body,'tr','');add(row,'th',label).scope='row';add(row,'td',describeAvailability(r));add(row,'td',stamp);
   }
-  add(root,'p','SDP 연결: PC 조회 성공과 별개입니다. 보호 현황의 SDP 상태 확인 결과를 확인하세요. 예제 자료나 연결된 자료 표시만으로 SDP 연결 성공을 판단하지 않습니다.');
-  add(root,'p','패키지·AI 기능: 별도 설정과 권한이 필요합니다. 앱 전체 모드가 아닌 각 기능의 조회·연결 결과를 확인하세요.');
+  add(root,'p','SDP 연결: PC 조회 성공과 별개입니다. 보호 현황의 SDP 상태 확인 결과를 확인하세요. 자료를 조회했다는 사실만으로 SDP 연결 성공을 판단하지 않습니다.');
+  add(root,'p',demo?'패키지·AI 설명·조치 결과도 미리 만든 예제이며 실제 조회·AI 호출·조치를 수행하지 않습니다.':'패키지·AI 기능: 별도 설정과 권한이 필요합니다. 각 기능의 조회·연결 결과를 확인하세요.');
 }

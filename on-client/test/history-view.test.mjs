@@ -16,14 +16,18 @@ globalThis.document={createElement:tag=>new Node(tag)};
 
 const walk=n=>[n,...n.children.flatMap(walk)];
 const row=(queriedAt,kind='access')=>({queryId:'fixture-id',mode:'demo',kind,queriedAt,occurredAt:'2026-10-20T00:00:00Z'});
-test('groups exact query timestamps newest first with filtered record counts',async()=>{
- const root=new Node('div');const view=createHistoryView(root,async()=>({ok:true,data:[row('2026-10-26T00:00:00Z'),row('2026-10-27T00:00:00Z'),row('2026-10-27T00:00:00Z','xdr')]}));
+test('one collapsed table orders query timestamps newest first and filters rows',async()=>{
+ const root=new Node('div');const view=createHistoryView(root,async()=>({ok:true,data:[row('2026-10-26T00:00:00Z'),row('2026-10-27T00:00:00Z'),row('2026-10-27T00:00:00Z','xdr')]}),{demo:true});
  const select=walk(root).find(n=>n.tagName==='select');select.value='all';await view.refresh();
- let summaries=walk(root).filter(n=>n.tagName==='summary');assert.match(summaries[0].textContent,/27.*기록 2건/);assert.match(summaries[1].textContent,/26.*기록 1건/);
- select.value='xdr';select.listeners.change();summaries=walk(root).filter(n=>n.tagName==='summary');assert.equal(summaries.length,2);assert.match(summaries[0].textContent,/기록 1건/);
+ const tables=walk(root).filter(n=>n.tagName==='table');assert.equal(tables.length,1);
+ const disclosure=walk(root).find(n=>n.className==='history-disclosure');assert.equal(disclosure.open,false);
+ const body=walk(root).find(n=>n.tagName==='tbody');assert.equal(body.children.length,3);
+ assert.match(body.children[0].children[0].textContent,/27/);assert.match(body.children[2].children[0].textContent,/26/);
+ disclosure.open=true;select.value='xdr';select.listeners.change();assert.equal(body.children.length,1);assert.equal(disclosure.open,true);
+ assert.match(walk(root).find(n=>n.tagName==='summary').textContent,/표시 1\/3건/);
 });
 test('failure remains failure after filter and deletion needs explicit confirmation',async()=>{
- const root=new Node('div');let fail=true;const calls=[];const view=createHistoryView(root,async(path)=>{calls.push(path);return fail?{ok:false}:{ok:true,data:[row('2026-10-27T00:00:00Z')]};});
+ const root=new Node('div');let fail=true;const calls=[];const view=createHistoryView(root,async(path)=>{calls.push(path);return fail?{ok:false}:{ok:true,data:[row('2026-10-27T00:00:00Z')]};},{demo:true});
  const select=walk(root).find(n=>n.tagName==='select');select.value='all';await view.refresh();select.listeners.change();assert.match(root.textContent,/이력 조회 실패/);
  const clear=walk(root).find(n=>n.tagName==='button'&&n.textContent.includes('삭제'));await clear.listeners.click();assert.equal(calls.length,1);
  fail=false;await view.refresh();const consent=walk(root).find(n=>n.tagName==='input');assert.equal(clear.disabled,true);consent.checked=true;consent.listeners.change();assert.equal(clear.disabled,false);

@@ -13,15 +13,15 @@ export function explainChange(current, metric, history) {
   }
   return '비교 자료 부족 · 같은 대상의 이전 유효 실측이 없습니다.';
 }
-export function createPcStatusView(root, request) {
+export function createPcStatusView(root, request, {demo=false}={}) {
   let rows=[],busy=false,sequence=0;
   const add=(parent,tag,text)=>{const element=document.createElement(tag);element.textContent=text;parent.append(element);return element;};
-  add(root,'p','이 PC를 일반 권한으로 직접 측정합니다. 앱의 예제 보안 기록과 별개이며, 측정값은 출처·시각·단위와 함께 표시합니다.').className='feature-note';
+  add(root,'p',demo?'설명용 예제 수치·시각입니다. 실제 PC를 측정하지 않으며, 이 브라우저 메모리에서만 보관합니다.':'이 PC를 일반 권한으로 직접 측정합니다. 측정값은 출처·시각·단위와 함께 표시합니다.').className='feature-note';
   const status=add(root,'p','측정 전 · 자동으로 측정하지 않습니다.');status.setAttribute('role','status');
   status.className='pc-status-message';
   const controls=add(root,'div','');controls.className='pc-controls';
-  const measure=add(controls,'button','내 PC 상태 측정');measure.type='button';measure.className='btn pc-measure';
-  const reload=add(controls,'button','저장된 PC 측정 보기');reload.type='button';reload.className='btn';
+  const measure=add(controls,'button',demo?'예제 PC 상태 보기':'내 PC 상태 측정');measure.type='button';measure.className='btn pc-measure';
+  const reload=add(controls,'button',demo?'예제 추이 자료 보기':'저장된 PC 측정 보기');reload.type='button';reload.className='btn';
   const filterLabel=add(controls,'label','표시 항목 ');
   const filter=add(filterLabel,'select','');filter.setAttribute('aria-label','PC 상태 종류');
   for(const [value,label] of [['all','전체'],...Object.entries(labels)]){const option=add(filter,'option',label);option.value=value;}
@@ -33,7 +33,7 @@ export function createPcStatusView(root, request) {
   const historyHeading=add(root,'h3','항목별 측정 이력');historyHeading.className='pc-history-heading';
   const list=add(root,'ol','');list.setAttribute('aria-label','항목별 측정 이력');
   list.className='pc-history-groups';
-  const valid=sample=>sample&&['measured','example'].includes(sample.source)&&Number.isFinite(Date.parse(sample.queriedAt))&&Array.isArray(sample.metrics)&&sample.metrics.every(m=>Object.hasOwn(labels,m.kind)&&['ok','unknown'].includes(m.status)&&m.unit===(m.kind==='cpu'?'%':'GiB')&&typeof m.target==='string'&&(m.status!=='ok'||Number.isFinite(m.value)&&Number.isFinite(Date.parse(m.measuredAt))));
+  const valid=sample=>sample&&sample.source===(demo?'example':'measured')&&Number.isFinite(Date.parse(sample.queriedAt))&&Array.isArray(sample.metrics)&&sample.metrics.every(m=>Object.hasOwn(labels,m.kind)&&['ok','unknown'].includes(m.status)&&m.unit===(m.kind==='cpu'?'%':'GiB')&&typeof m.target==='string'&&(m.status!=='ok'||Number.isFinite(m.value)&&Number.isFinite(Date.parse(m.measuredAt))));
   const renderTrend=(parent,current,metric)=>{
     const figure=add(parent,'figure','');figure.className='pc-trend';
     add(figure,'figcaption',`최근 최대 20회 ${current.source==='measured'?'실측':'예제'} 추이 · ${metric.unit}`);
@@ -107,12 +107,12 @@ export function createPcStatusView(root, request) {
         add(card,'h4',labels[metric.kind]);
         const value=add(card,'p',metric.status==='ok'?metric.value.toFixed(2):'확인 불가');value.className='pc-value';
         add(value,'span',` ${metric.unit}`).className='pc-unit';
-        add(card,'p',metric.status==='ok'?`측정 시각 ${time(metric.measuredAt)}`:`측정 시각 없음 · 시도 ${time(metric.attemptedAt)}`).className='pc-time';
+        add(card,'p',metric.status==='ok'?`${demo?'예제 시각':'측정 시각'} ${time(metric.measuredAt)}`:`측정 시각 없음 · 시도 ${time(metric.attemptedAt)}`).className='pc-time';
         if(metric.status!=='ok')add(card,'p',`이유: ${metric.reason||'원인 정보 없음'}`).className='pc-warning';
         renderTrend(card,row,metric);
         add(card,'p',explainChange(row,metric,rows)).className='pc-change';
         add(card,'p',`대상: ${metric.target}`).className='pc-meta';
-        if(metric.kind==='cpu'&&metric.status==='ok')add(card,'p',`측정 시작 ${time(metric.startedAt)} · 구간 ${(metric.intervalMs/1000).toFixed(3)}초`).className='pc-meta';
+        if(metric.kind==='cpu'&&metric.status==='ok')add(card,'p',`${demo?'예제 구간 시작':'측정 시작'} ${time(metric.startedAt)} · 구간 ${(metric.intervalMs/1000).toFixed(3)}초`).className='pc-meta';
       }
     };
     const row=ordered[0];
@@ -128,7 +128,7 @@ export function createPcStatusView(root, request) {
   filter.addEventListener('change',render);
   async function load(measuring){
     if(busy)return;busy=true;measure.disabled=true;reload.disabled=true;const gen=++sequence;
-    status.textContent=measuring?'일반 권한으로 측정 중':'저장된 PC 이력 조회 중';
+    status.textContent=measuring?(demo?'예제 자료 준비 중':'일반 권한으로 측정 중'):'저장된 PC 이력 조회 중';
     try{
       let current;
       if(measuring){
@@ -142,8 +142,8 @@ export function createPcStatusView(root, request) {
       }
       rows=result.data;
       if(current&&!rows.some(row=>row.queriedAt===current.queriedAt))rows.unshift(current);
-      render();status.textContent=`${measuring?'이번 측정 결과입니다. 항목별 상태를 확인하세요.':'저장된 결과를 불러왔습니다. 새로 측정하지 않았습니다.'} · 측정 묶음 ${rows.length}건 · 최근 30일, 최대 1,000묶음${current?.saved===false?' · 이번 측정 저장 실패':''}`;
-    }finally{busy=false;measure.disabled=false;reload.disabled=false;}
+      render();status.textContent=`${demo?'예제 · 실제 측정 아님 · ':''}${measuring?'이번 측정 결과입니다. 항목별 상태를 확인하세요.':'저장된 결과를 불러왔습니다. 새로 측정하지 않았습니다.'} · 측정 묶음 ${rows.length}건 · ${demo?'현재 브라우저의 예제 자료':'최근 30일, 최대 1,000묶음'}${current?.saved===false?' · 이번 측정 저장 실패':''}`;
+    }catch{status.textContent='확인 불가 · 요청을 처리하지 못했습니다. 연결 상태를 확인한 뒤 다시 조회하세요. 이전 값은 현재 값이 아닙니다.';}finally{busy=false;measure.disabled=false;reload.disabled=false;}
   }
   measure.addEventListener('click',()=>load(true));reload.addEventListener('click',()=>load(false));
 }

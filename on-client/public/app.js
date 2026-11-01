@@ -1,5 +1,6 @@
+import { createDisplayMode } from '/demo-data.mjs';
 import { renderAvailability } from '/availability-view.mjs';
-import {createPcInspectionView} from '/pc-inspection-view.mjs';
+import {createPcInspectionView, createSdpStatusView} from '/pc-inspection-view.mjs';
 // Alekov 학생 클라이언트 — 제공 공통 UI.
 // 모든 외부·서버 문자열은 textContent로만 표시한다. innerHTML/insertAdjacentHTML 사용 금지.
 // 자동 재시도 없음: 모든 요청은 사용자 동작 또는 최초 1회 로드에서만 일어난다.
@@ -7,6 +8,10 @@ import { normalizeScan, createVulnerabilitiesView } from '/vulnerabilities-view.
 import { createHistoryView } from '/history-view.mjs';
 import { createPcStatusView } from '/pc-status-view.mjs';
 let historyView;
+
+const display = createDisplayMode({ actualRequest });
+const request = (path, options) => display.request(path, options);
+let demoConnections = { native: null, ai: null };
 
 const STUDENT_MODULE = '/student/extension.mjs';
 const STUDENT_PENDING = '표시 기능을 사용할 수 없습니다. 새로고침한 뒤에도 같으면 담당자에게 문의하세요.';
@@ -249,7 +254,7 @@ function localFailure(code, message, meta = { mode: 'disconnected', checkedAt: n
 const UNKNOWN_META = { mode: 'unknown', checkedAt: null };
 
 // 일반 조회·조치는 10초, 지정한 AI 경로만 별도 유한 기한을 사용한다. 호출자는 signal로 취소할 수 있다.
-async function request(path, { method = 'GET', body, signal, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
+async function actualRequest(path, { method = 'GET', body, signal, timeoutMs = REQUEST_TIMEOUT_MS } = {}) {
   const controller = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => { timedOut = true; controller.abort(); }, timeoutMs);
@@ -267,7 +272,7 @@ async function request(path, { method = 'GET', body, signal, timeoutMs = REQUEST
     try {
       response = await fetch(path, {
         method,
-        headers: body ? { 'content-type': 'application/json', accept: 'application/json' } : { accept: 'application/json' },
+        headers: { 'x-keshev-display-mode': 'actual', accept: 'application/json', ...(body ? { 'content-type': 'application/json' } : {}) },
         body: body ? JSON.stringify(body) : undefined,
         credentials: 'same-origin',
         cache: 'no-store',
@@ -393,12 +398,13 @@ function currentMode() {
 }
 
 function renderMode() {
-  renderAvailability($('availability'), state);
+  document.documentElement.dataset.displayMode = display.mode;
+  renderAvailability($('availability'), state, {demo:display.mode==='demo'});
   const badge = $('mode-badge');
   const mode = currentMode();
   badge.dataset.mode = mode;
-  badge.textContent = MODE_LABELS[mode];
-  $('checked-at').textContent = state.checkedAt ? `확인 시각 ${formatTime(state.checkedAt)}` : '';
+  badge.textContent = display.mode==='demo' ? '데모 · 모든 자료는 예제' : `실제 조회 · ${MODE_LABELS[mode]}`;
+  $('checked-at').textContent = state.checkedAt ? `${display.mode==='demo'?'예제 확인 시각':state.me.status==='error'?'조회 시도 시각':'확인 시각'} ${formatTime(state.checkedAt)}` : '';
   renderStudent('status');
 }
 
@@ -409,9 +415,9 @@ function renderErrors() {
     box.replaceChildren();
     return;
   }
-  const items = [...state.errors].map(([key, message]) =>
-    el('li', {}, [el('strong', { text: `${RESOURCE_LABELS[key] || key}: ` }), message]),
-  );
+  const grouped=new Map();
+  for(const [key,message] of state.errors){if(!grouped.has(message))grouped.set(message,[]);grouped.get(message).push(RESOURCE_LABELS[key]||key);}
+  const items=[...grouped].map(([message,names])=>el('li',{},[el('strong',{text:names.join(' · ')+': '}),message]));
   setChildren(box, el('ul', {}, items));
   box.hidden = false;
 }
@@ -419,36 +425,149 @@ function renderErrors() {
 // ---------- 메뉴 ----------
 
 const viewScrollPositions = new Map();
+const activeSubviews = { protection: 'pc', apps: 'choose', guide: 'purpose' };
+const navigationKey = () => `${state.view}:${activeSubviews[state.view] || ''}`;
 
-function selectView(view, { focus = false } = {}) {
-  const changed = state.view !== view;
-  if (changed) viewScrollPositions.set(state.view, { top: window.scrollY, left: window.scrollX });
+const headerHeight=()=>document.querySelector('.topbar')?.getBoundingClientRect().height||60;
+function setupPersistentHeader(){
+  const header=document.querySelector('.topbar');
+  const update=()=>document.documentElement.style.setProperty('--header-height',`${Math.ceil(header.getBoundingClientRect().height)}px`);
+  update();
+  new ResizeObserver(update).observe(header);
+  // Native Tab navigation should also keep a focused control below the header.
+  document.addEventListener('focusin',event=>{
+    const target=event.target;
+    if(!(target instanceof HTMLElement)||!target.closest('main')||target.closest('dialog'))return;
+    const rect=target.getBoundingClientRect();
+    if(rect.height&&rect.top<headerHeight()+12)target.scrollIntoView({block:'start',behavior:'instant'});
+  });
+}
+function focusNavTab(tab) {
+  tab.focus({ preventScroll: true });
+  const sidebar = tab.closest('.sidebar');
+  if (!sidebar) return;
+  const bounds = sidebar.getBoundingClientRect(), item = tab.getBoundingClientRect();
+  const top = Math.max(headerHeight(), bounds.top) + 8, bottom = Math.min(window.innerHeight, bounds.bottom) - 8;
+  if(getComputedStyle(sidebar).position!=='sticky'){
+    if(item.top<top||item.bottom>bottom)tab.scrollIntoView({block:'nearest',behavior:'instant'});
+    return;
+  }
+  if (item.top < top) sidebar.scrollTop -= top - item.top;
+  else if (item.bottom > bottom) sidebar.scrollTop += item.bottom - bottom;
+}
+
+function syncSubview(view) {
+  const selectedKey = activeSubviews[view];
+  for (const tab of document.querySelectorAll(`#subnav-${view} [role="tab"]`)) {
+    const selected = tab.dataset.subview === selectedKey;
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  }
+  for (const panel of document.querySelectorAll(`[data-subpanel-view="${view}"]`)) {
+    panel.setAttribute('role', 'tabpanel');
+    panel.setAttribute('aria-labelledby', `subtab-${view}-${panel.dataset.subpanel}`);
+    panel.hidden = panel.dataset.subpanel !== selectedKey;
+  }
+  if (view === 'guide') { $('student-guide').hidden = selectedKey === 'availability'; $('guide-role-links').hidden = selectedKey !== 'roles'; }
+}
+
+function selectView(view, { focus = false, subview } = {}) {
+  const primary = document.querySelector(`#primary-tabs [data-view="${view}"]`);
+  if (!primary) return;
+  if (subview && !document.querySelector(`#subnav-${view} [data-subview="${subview}"]`)) return;
+  const previousKey = navigationKey();
+  const nextKey = `${view}:${subview || activeSubviews[view] || ''}`;
+  const changed = previousKey !== nextKey;
+  if (changed) viewScrollPositions.set(previousKey, { top: window.scrollY, left: window.scrollX });
   state.view = view;
-  for (const tab of document.querySelectorAll('#nav [role="tab"]')) {
+  if (subview) activeSubviews[view] = subview;
+  for (const tab of document.querySelectorAll('#primary-tabs [role="tab"]')) {
     const selected = tab.dataset.view === view;
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
-    if (selected && focus) tab.focus({ preventScroll: true });
     $(tab.getAttribute('aria-controls')).hidden = !selected;
   }
-  if (changed) window.scrollTo({ ...(viewScrollPositions.get(view) || { top: 0, left: 0 }), behavior: 'instant' });
+  for (const group of document.querySelectorAll('#nav .subnav')) {
+    group.hidden = group.dataset.forView !== view;
+    syncSubview(group.dataset.forView);
+  }
+  if (changed) window.scrollTo({ ...(viewScrollPositions.get(nextKey) || { top: 0, left: 0 }), behavior: 'instant' });
+  if (focus) focusNavTab(primary);
+}
+
+function selectSubview(tab, { focus = false } = {}) {
+  selectView(tab.dataset.parentView, { subview: tab.dataset.subview });
+  if (focus) focusNavTab(tab);
+}
+
+function nextTab(tabs, tab, key) {
+  const index = tabs.indexOf(tab);
+  if (key === 'ArrowDown') return tabs[(index + 1) % tabs.length];
+  if (key === 'ArrowUp') return tabs[(index - 1 + tabs.length) % tabs.length];
+  if (key === 'Home') return tabs[0];
+  if (key === 'End') return tabs[tabs.length - 1];
+  return null;
 }
 
 function setupNav() {
-  const tabs = [...document.querySelectorAll('#nav [role="tab"]')];
+  const tabs = [...document.querySelectorAll('#primary-tabs [role="tab"]')];
   for (const tab of tabs) {
     tab.addEventListener('click', () => selectView(tab.dataset.view));
     tab.addEventListener('keydown', (event) => {
-      const index = tabs.indexOf(tab);
-      let next = null;
-      if (event.key === 'ArrowDown' || event.key === 'ArrowRight') next = tabs[(index + 1) % tabs.length];
-      else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') next = tabs[(index - 1 + tabs.length) % tabs.length];
-      else if (event.key === 'Home') next = tabs[0];
-      else if (event.key === 'End') next = tabs[tabs.length - 1];
+      if (event.key === 'ArrowRight') {
+        const child = document.querySelector(`#subnav-${tab.dataset.view} [aria-selected="true"], #subnav-${tab.dataset.view} [data-section-link]`);
+        if (child) { event.preventDefault(); focusNavTab(child); }
+        return;
+      }
+      const next = nextTab(tabs, tab, event.key);
       if (!next) return;
       event.preventDefault();
       selectView(next.dataset.view, { focus: true });
     });
+  }
+  for (const group of document.querySelectorAll('#nav .subnav')) {
+    const children = [...group.querySelectorAll('[role="tab"]')];
+    for (const tab of children) {
+      tab.addEventListener('click', () => selectSubview(tab));
+      tab.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowLeft' || event.key === 'Escape') {
+          event.preventDefault();
+          focusNavTab($(`tab-${tab.dataset.parentView}`));
+          return;
+        }
+        const next = nextTab(children, tab, event.key);
+        if (!next) return;
+        event.preventDefault();
+        selectSubview(next, { focus: true });
+      });
+    }
+  }
+  for (const link of document.querySelectorAll('[data-section-link]')) {
+    link.addEventListener('click', event => {
+      event.preventDefault();
+      selectView(link.dataset.parentView, {subview:link.dataset.guideSubview});
+      const target=$(link.getAttribute('href').slice(1));
+      if(!target)return;
+      target.tabIndex=-1;target.scrollIntoView({block:'start',behavior:'instant'});target.focus({preventScroll:true});
+      markSectionLinks();
+    });
+    link.addEventListener('keydown',event=>{
+      if(event.key==='ArrowLeft'||event.key==='Escape'){event.preventDefault();focusNavTab($(`tab-${link.dataset.parentView}`));return;}
+      const links=[...link.parentElement.querySelectorAll('[data-section-link]')],next=nextTab(links,link,event.key);
+      if(next){event.preventDefault();focusNavTab(next);}
+    });
+  }
+  let scrollQueued=false;
+  window.addEventListener('scroll',()=>{if(!scrollQueued){scrollQueued=true;requestAnimationFrame(()=>{scrollQueued=false;markSectionLinks();});}},{passive:true});
+  selectView(state.view);
+}
+function markSectionLinks(){
+  for(const group of document.querySelectorAll('.section-nav')){
+    if(group.hidden)continue;
+    const links=[...group.querySelectorAll('[data-section-link]')];
+    const targets=links.map(link=>({link,target:$(link.getAttribute('href').slice(1))})).filter(x=>x.target&&x.target.getClientRects().length);
+    const current=targets.filter(x=>x.target.getBoundingClientRect().top<=headerHeight()+Math.min(180,window.innerHeight/3)).at(-1)||targets[0];
+    for(const link of links){if(link===current?.link)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current');}
   }
 }
 
@@ -463,12 +582,10 @@ function renderAiConnection() {
   else if (resource.status === 'error') setChildren(target, stateBox('error', `${resource.error.code}: ${resource.error.message}`));
   else {
     const data = resource.data;
-    setChildren(target, el('p', { text: data.audienceAuthorization === 'test' ? '시험 transport의 모델 응답 점검(test) · 실제 게이트 수용 아님' : '앱 권한 확인 후 모델 응답 점검(verified)' }),
-      resource.meta.mode === 'demo' ? el('p', { className: 'tag tag-demo', text: '예제 응답(demo) · 실제 게이트 수용 아님' }) : null,
-      el('dl', { className: 'kv' }, [el('dt', { text: '응답 모델 수' }), el('dd', { text: data.modelCount }), el('dt', { text: '점검 시각' }), el('dd', { text: resource.meta.checkedAt })]),
+    setChildren(target, el('p', { text: resource.meta.mode==='demo'?'예제 점검 결과 · 실제 AI 모델을 호출하지 않았습니다.':data.audienceAuthorization === 'test' ? '시험 연결 응답 · 실제 이용 권한 확인 아님' : '앱 권한 확인 후 모델 응답 점검' }),
+      el('dl', { className: 'kv' }, [el('dt', { text: resource.meta.mode==='demo'?'예제 모델 수':'응답 모델 수' }), el('dd', { text: `${data.modelCount}개` }), el('dt', { text: resource.meta.mode==='demo'?'예제 시각':'점검 시각' }), el('dd', { text: resource.meta.checkedAt })]),
       el('p', { className: 'muted', text: '이 점검은 사건 설명을 실행하지 않았습니다. 실제 사건 설명의 근거와 결과는 보안 기록에서 별도로 확인하세요.' }));
   }
-  renderStudent('aiConnection');
 }
 
 function cancelAiCheck({ reset = false } = {}) {
@@ -522,6 +639,7 @@ function guardStaticArt() {
 // 승인 기한이 지나면 화면 안내만 바꾼다(서버 확인 없이 연결 상태 자체는 바꾸지 않는다).
 let connectExpiryTimer = null;
 function renderAiConnect() {
+  if(display.mode==='demo')return renderDemoConnection('ai');
   const target = $('ai-connect-result');
   const s = aiConnect ? aiConnect.state : { phase: aiConnectLoadFailed ? 'unknown' : 'idle', reason: aiConnectLoadFailed ? 'ALEKOV_CONNECT_NOT_MOUNTED' : null };
   const busy = ['starting', 'finishing', 'cancelling'].includes(s.phase);
@@ -551,7 +669,7 @@ function renderAiConnect() {
     : aiConnectLoadFailed ? '이 앱 버전에는 아직 AI 연결 화면이 연결되지 않았습니다(미연결). 기존 설명·판정·기록은 그대로 쓸 수 있습니다.' : 'AI 연결 화면을 준비하는 중…';
   const kind = s.phase === 'connected' ? 'ok' : ['error', 'unknown'].includes(s.phase) ? 'error' : ['idle', 'cancelled'].includes(s.phase) ? 'empty' : 'loading';
   setChildren(target,
-    stateBox(kind, message),
+    stateBox(kind, s.phase==='idle'?'아직 AI 이용 승인을 시작하지 않았습니다.':message),
     s.phase === 'awaiting_approval' ? el('dl', { className: 'kv connect-code' }, [
       el('dt', { text: '확인 번호' }), el('dd', { testid: 'ai-connect-confirmation', text: s.confirmation }),
       el('dt', { text: '승인 기한' }), el('dd', { text: formatTime(s.expiresAt) }),
@@ -579,6 +697,7 @@ function invalidateAppConnectView() {
 }
 
 function renderNativeLogin() {
+  if(display.mode==='demo')return renderDemoConnection('native');
   const target = $('native-login-result');
   const fallback = { phase: aiConnectLoadFailed ? 'error' : 'idle', reason: aiConnectLoadFailed ? 'NATIVE_LOGIN_NOT_MOUNTED' : null };
   const view = nativeLogin && aiConnectModule ? aiConnectModule.nativeLoginView(nativeLogin.state, Date.now()) : null;
@@ -612,12 +731,30 @@ function renderNativeLogin() {
   );
 }
 
+const connectionFetch=display.guardActualFetch((path,options)=>fetch(path,{...options,headers:{...options.headers,'x-keshev-display-mode':'actual'}}));
+function renderDemoConnection(kind){
+  const native=kind==='native',prefix=native?'native-login':'ai-connect',result=demoConnections[kind];
+  const text=result?`예제 ${result.step==='cancel'?'취소':result.step==='start'?'시작':'확인'} · 실제 ${native?'계정 로그인':'AI 이용 승인'}을 수행하지 않았습니다. · 예제 시각 ${formatTime(result.checkedAt)}`:'예제 체험 전 · 실제 계정이나 AI 승인 화면으로 연결하지 않습니다.';
+  setChildren($(prefix+'-result'),stateBox('empty',text));
+  for(const id of [prefix+'-start',prefix+(native?'-check':'-status')])$(id).disabled=false;
+  $(prefix+(native?'-redeem':'-finish')).disabled=!result||result.step==='cancel';
+  $(prefix+'-cancel').disabled=!result||result.step==='cancel';
+  $(prefix+'-open').hidden=true;$(prefix+'-open').removeAttribute('href');
+  if(!native){$('ai-connect-check').hidden=true;$('ai-connect-art-connected').hidden=true;$('ai-connect-art-unknown').hidden=true;}
+}
+async function demoConnectionAction(kind,step){
+  const epoch=display.epoch;
+  const result=await request(`/api/${kind==='native'?'native-login':'ai/connect'}/${step}`,{method:'POST',body:{}});
+  if(epoch!==display.epoch||display.mode!=='demo')return;
+  if(result.ok)demoConnections[kind]=result.data;
+  renderDemoConnection(kind);
+}
 async function loadConnectModule() {
   try {
     aiConnectModule = await import('/ai-connect.mjs');
-    aiConnect = aiConnectModule.createAiConnectController({ onChange: () => renderAiConnect() });
+    aiConnect = aiConnectModule.createAiConnectController({ transport: aiConnectModule.createFetchTransport({fetchImpl:connectionFetch}), onChange: () => renderAiConnect() });
     // 만들기만 한다. 첫 화면에서 native 요청은 보내지 않는다.
-    nativeLogin = aiConnectModule.createNativeLoginController({ onChange: () => renderNativeLogin(), onInvalidate: () => invalidateAppConnectView() });
+    nativeLogin = aiConnectModule.createNativeLoginController({ transport: aiConnectModule.createNativeFetchTransport({fetchImpl:connectionFetch}), onChange: () => renderNativeLogin(), onInvalidate: () => invalidateAppConnectView() });
   } catch {
     aiConnectLoadFailed = true;
   }
@@ -628,7 +765,7 @@ async function loadConnectModule() {
 let connectHelpText = '';
 function showConnectHelp() {
   const output = $('ai-connect-help-output');
-  const info = aiConnect ? aiConnect.helpInfo() : { component: 'alekov-ai-connect', phase: 'unknown', reason: 'ALEKOV_CONNECT_NOT_MOUNTED', automaticRetries: 0, manualSecretInputs: 0 };
+  const info = display.mode==='demo' ? {source:'예제',message:'실제 연결 정보 아님',automaticRetries:0} : aiConnect ? aiConnect.helpInfo() : { component: 'alekov-ai-connect', phase: 'unknown', reason: 'ALEKOV_CONNECT_NOT_MOUNTED', automaticRetries: 0, manualSecretInputs: 0 };
   connectHelpText = JSON.stringify(info, null, 2);
   output.textContent = connectHelpText;
   output.hidden = false;
@@ -658,23 +795,19 @@ function noteIdentity(resource) {
 
 function renderIdentity() {
   const me = state.me;
-  const cells = { user: $('identity-user'), device: $('identity-device'), session: $('identity-session') };
-  if (me.status === 'loading') {
-    for (const cell of Object.values(cells)) cell.textContent = '불러오는 중';
-    return;
-  }
+  const target = $('identity-user');
+  if (me.status === 'loading') return setChildren(target, loadingBox());
   if (me.status === 'error') {
-    const text = isUnverified(me) ? '확인 불가 (응답 형식 불일치)' : '확인 불가 (요청 실패)';
-    for (const cell of Object.values(cells)) cell.textContent = text;
-    return;
+    return setChildren(target, stateBox('error', me.error.message));
   }
-  const { user, device, session } = me.data;
-  cells.user.textContent = user.label || user.id;
-  cells.device.textContent = `${device.label || device.id} · ${stateLabel('device', device.status)}`;
-  cells.session.textContent = `${session.id} · ${stateLabel('session', session.status)}`;
-  if (me.meta && me.meta.mode === 'demo') {
-    for (const cell of Object.values(cells)) cell.append(el('span', { className: 'tag tag-demo', text: 'demo' }));
-  }
+  const { user } = me.data;
+  setChildren(target,
+    me.meta?.mode === 'demo' ? el('p', { className: 'tag tag-demo', text: '예제 데이터' }) : null,
+    el('ul', { className: 'plain-list' }, [el('li', {}, [
+      el('span', { className: 'item-title', text: user.label || user.id }),
+      el('span', { className: 'muted', text: '사용자' }),
+    ])]),
+  );
 }
 
 // 검증된 coverage 의 확인 시각. 원천이 확인한 시각이며 화면을 그린 시각이 아니다.
@@ -722,6 +855,7 @@ function renderSessions() {
 let diagnosticsText = '';
 
 async function loadDiagnostics() {
+  const epoch=display.epoch;
   const button = $('diag-load');
   const copy = $('diag-copy');
   const status = $('diag-status');
@@ -736,6 +870,7 @@ async function loadDiagnostics() {
 
   try {
     const resource = toResource(await request('/api/diagnostics'));
+    if(epoch!==display.epoch)return;
     state.diagnostics = resource;
     trackError('diagnostics', resource);
     if (resource.status === 'error') {
@@ -775,11 +910,14 @@ async function copyDiagnostics() {
 // OSV는 사용자 요청으로만 조회한다. 각 요청의 제한 시간과 세대를 함께 확인한다.
 function renderVulnerabilities() {
   if (!vulnerabilitiesView) vulnerabilitiesView = createVulnerabilitiesView({ document });
-  setChildren($('vulnerabilities-result'), vulnerabilitiesView.render(state.vulnerabilities));
+  setChildren($('vulnerabilities-result'), state.vulnerabilities.status==='ok'&&state.vulnerabilities.meta?.mode==='demo' ? renderDemoPackages(state.vulnerabilities.data) : vulnerabilitiesView.render(state.vulnerabilities));
   $('vulnerabilities-cancel').disabled = state.vulnerabilities.status !== 'loading';
   renderStudent('vulnerabilities');
 }
 
+function renderDemoPackages(data){
+  return el('div',{},[el('p',{className:'tag tag-demo',text:'예제 패키지 · 실제 설치 확인·OSV 조회 없음'}),el('p',{className:'ui-meta',text:`예제 시각 ${formatTime(data.checkedAt)}`}),...data.packages.map(pkg=>el('p',{text:`${pkg.name} ${pkg.version} · 예제 취약점 ${pkg.vulnerabilities.map(v=>v.id).join(', ')} · 실제 취약점 아님`}))]);
+}
 function clearVulnerabilities() {
   ++vulnerabilitiesGeneration;
   if (vulnerabilitiesController) vulnerabilitiesController.abort();
@@ -812,7 +950,7 @@ async function loadVulnerabilities() {
     const result = await Promise.race([request('/api/vulnerabilities', { signal: controller.signal }), deadline]);
     if (gen !== generation || requestGen !== vulnerabilitiesGeneration) return;
     if (result.ok) {
-      const scan = normalizeScan(result.data);
+      const scan = result.meta?.mode==='demo'&&result.data?.source==='example' ? result.data : normalizeScan(result.data);
       state.vulnerabilities = scan ? { status: 'ok', data: scan, meta: result.meta }
         : { status: 'error', error: { code: 'CONTRACT_MISMATCH', message: '패키지 조회 응답을 확인할 수 없습니다.' } };
     } else state.vulnerabilities = { status: 'error', error: { code: result.error.code, message: '패키지 조회를 확인할 수 없습니다. 이전 결과를 정상으로 표시하지 않습니다.' } };
@@ -908,7 +1046,7 @@ function renderAccess() {
   setChildren(
     target,
     el('p', { className: `decision decision-${data.decision}` }, [el('strong', { text: `${isDemo ? '예제 판정 · ' : ''}${info.label}` }), ` · ${access.appName}`]),
-    el('p', { text: isDemo ? '동작을 설명하기 위한 예제 결과입니다. 실제 서비스의 접속·차단 결과가 아닙니다.' : info.note }),
+    el('p', { className: 'ui-help', text: isDemo ? '동작을 설명하기 위한 예제 결과입니다. 실제 서비스의 접속·차단 결과가 아닙니다.' : info.note }),
     el('dl', { className: 'kv' }, [
       el('dt', { text: '사유' }), el('dd', { text: data.reason || '사유 정보 없음' }),
       el('dt', { text: '판정 시각' }), el('dd', { text: formatTime(data.checkedAt) }),
@@ -1124,14 +1262,16 @@ function renderAction() {
   out.dataset.state=actionState.status;
   const s=actionState,confirmed=s.status==='succeeded'&&s.observation?.effectApplied===true;
   const labels={loading:'원천에 확인하는 중 · 완료 아님',prepared:'준비됨 · 미실행',executing:'사람 확인 후 원천에 전달 중 · 완료 아님',pending:'처리 중(pending) · ACK는 완료가 아님',succeeded:'원천 효과 확인(succeeded)',denied:'원천 거절(denied)',failed:'원천 실패(failed)',unknown:'결과 불명(unknown) · 효과 없음으로 판단 금지',expired:'확인 기한 만료 · 이번 준비로는 집행할 수 없음',error:'요청이 처리되지 않았습니다 · 아래 원인을 확인하세요'};
-  setChildren(out,el('p',{className:confirmed?'action-observed':'muted',text:labels[s.status]||s.message||'조치 상태 확인 불가'}),
-    s.event?el('p',{text:`사건 ${s.event.id} · 조치 ${s.actionId}`}):null,
-    s.target?el('p',{text:`실제 원천 대상 ${s.target.id} · 세대 ${s.target.generation}`}):null,
-    s.receipt?el('p',{text:`요청 ${s.receipt.requestId} · 영수증 ${s.receipt.receiptId||'확인 불가'} · 버전 ${s.receipt.version||'확인 불가'}`}):null,
-    s.confirmationExpiresAt?el('p',{text:`사람 확인 기한 ${s.confirmationExpiresAt}`}):null,
-    s.observation?el('p',{text:`원천 관측 ${s.observation.observedAt} · 실제 효과 ${s.observation.effectApplied}`}):null,
+  setChildren(out,display.mode==='demo'?el('p',{className:'tag tag-demo',text:'예제 조치 · 실제 전송·권한 변경·조치 없음'}):null,el('p',{className:confirmed?(display.mode==='demo'?'state state-warning':'state state-ok action-observed'):`state state-${['denied','failed','error'].includes(s.status)?'error':['loading','executing','pending'].includes(s.status)?'loading':['unknown','expired'].includes(s.status)?'warning':'empty'}`,text:(display.mode==='demo'?'예제 시나리오 · ':'')+(labels[s.status]||s.message||'조치 상태 확인 불가')}),
+    s.event?el('p',{className:'ui-meta',text:`사건 ${s.event.id} · 조치 ${s.actionId}`}):null,
+    s.target?el('p',{className:'ui-meta',text:`${display.mode==='demo'?'예제 대상':'실제 원천 대상'} ${s.target.id} · 세대 ${s.target.generation}`}):null,
+    s.receipt?el('p',{className:'ui-meta',text:`요청 ${s.receipt.requestId} · 영수증 ${s.receipt.receiptId||'확인 불가'} · 버전 ${s.receipt.version||'확인 불가'}`}):null,
+    s.confirmationExpiresAt?el('p',{className:'ui-meta',text:`사람 확인 기한 ${s.confirmationExpiresAt}`}):null,
+    s.observation?el('p',{className:'ui-meta',text:`${display.mode==='demo'?'예제 결과 시각':'원천 관측'} ${s.observation.observedAt} · ${display.mode==='demo'?'가상 효과':'실제 효과'} ${s.observation.effectApplied}`}):null,
     s.error?el('p',{className:'state state-error',text:`${s.error.code}: ${s.error.message}`}):null,
-    s.receipt?.superseded?el('p',{text:'이전 조회는 최신 결과를 대신하지 않습니다(superseded).'}):null);
+    s.receipt?.superseded?el('p',{className:'ui-meta',text:'이전 조회는 최신 결과를 대신하지 않습니다(superseded).'}):null);
+  $('action-confirm').textContent=display.mode==='demo'?'확인했으며 예제 조치 체험':'확인했으며 조치 실행';
+  $('action-result-load').textContent=display.mode==='demo'?'예제 결과만 다시 보기':'원천 결과만 재조회';
   $('action-confirm').disabled=s.status!=='prepared'||!actionTicket;
   $('action-result-load').disabled=!actionIntent||['loading','executing','prepared','expired'].includes(s.status);
   $('action-cancel').disabled=s.status==='idle';
@@ -1194,7 +1334,7 @@ function snapshot(resource) {
 // identity의 세 자료는 같은 세대의 응답만 담긴다(다시 불러오기 시 셋 모두 loading으로 초기화).
 function studentData(kind) {
   if(kind==='guide')return {};
-  if(kind==='action')return structuredClone(actionState);
+  if(kind==='action')return structuredClone({...actionState,mode:display.mode==='demo'?'demo':'connected'});
   if (kind === 'aiConnection') return { ...snapshot(state.aiConnection), checkedAt: state.aiConnection.meta?.checkedAt ?? null, explanationAccepted: false };
   if (kind === 'explanation') return structuredClone({ event: state.selectedExplanation.event, explanation: snapshot(state.selectedExplanation.resource), checkedAt: state.selectedExplanation.resource.meta?.checkedAt ?? null });
   if (kind === 'vulnerabilities') return snapshot(state.vulnerabilities);
@@ -1226,7 +1366,6 @@ const STUDENT_SLOTS = {
   events: { slot: 'student-events', fn: 'renderEvents', label: '이번에 받은 보안 기록' },
   status: { slot: 'student-status', fn: 'renderStatus', label: '연결 상태·알림' },
   vulnerabilities: { slot: 'student-vulnerabilities', fn: 'renderVulnerabilities', label: '패키지 조회 상세' },
-  aiConnection: { slot: 'student-ai-connection', fn: 'renderAiConnection', label: 'AI 연결 상태' },
   explanation: { slot: 'student-explanation', fn: 'renderExplanation', label: 'AI 사건 설명' },
   action: { slot: 'student-action', fn: 'renderAction', label: '조치 상태' },
 };
@@ -1245,7 +1384,16 @@ function renderStudent(kind) {
     return setChildren(target, stateBox('error', `${label} 표시 중 오류가 발생했습니다. 새로고침한 뒤에도 같으면 담당자에게 문의하세요. 다른 화면의 결과는 각각 확인하세요.`));
   }
   // 학생 반환은 DOM 요소 또는 텍스트만 허용한다. 문자열은 HTML로 해석하지 않는다.
-  if (output instanceof Element) return setChildren(target, output);
+  if (output instanceof Element) {
+    setChildren(target, output);
+    // Keep the first-use dialog available even when its originating subtab is hidden.
+    if (kind === 'identity') {
+      const dialog = target.querySelector('dialog');
+      if (dialog) $('onboarding-host').replaceChildren(dialog);
+    }
+    if (kind === 'guide') syncSubview('guide');
+    return;
+  }
   if (typeof output === 'string') return setChildren(target, el('p', { className: 'student-text', text: output }));
   if (output == null) return setChildren(target, stateBox('empty', `${label}: 표시할 결과가 없습니다. 조회 상태를 확인한 뒤 다시 조회하세요.`));
   setChildren(target, stateBox('error', `${label} 내용을 표시할 수 없습니다. 새로고침한 뒤에도 같으면 담당자에게 문의하세요.`));
@@ -1256,10 +1404,16 @@ function renderAllStudent() {
 }
 
 const studentApi = Object.freeze({
+  focusNavigation() {
+    const tab = $(`tab-${state.view}`);
+    if (!tab) return false;
+    focusNavTab(tab);
+    return true;
+  },
   focusPcMeasurement() {
     const button = document.querySelector('#pc-status .pc-measure');
     if (!button || button.disabled) return false;
-    selectView('protection');
+    selectView('protection', { subview: 'pc' });
     button.scrollIntoView({ block: 'center', behavior: 'instant' });
     button.focus({ preventScroll: true });
     return true;
@@ -1272,12 +1426,18 @@ const studentApi = Object.freeze({
   },
 });
 
+let studentHasMounted=false;
 async function loadStudentModule() {
+  const epoch=display.epoch,bound=display.bindRequest();
+  const api=Object.freeze({...studentApi,displayMode:display.mode,showOnboarding:!studentHasMounted,get(path){return STUDENT_GET_PATHS.includes(path)?bound(path):Promise.resolve(localFailure('NOT_ALLOWED','허용되지 않은 조회입니다.'));}});
   try {
     const mod = await import(STUDENT_MODULE);
+    if(epoch!==display.epoch)return;
     if (typeof mod.createStudentView !== 'function') throw new Error('missing export');
-    studentView = mod.createStudentView({ api: studentApi, onChange: () => renderAllStudent() }) || null;
+    studentView = mod.createStudentView({ api, onChange: () => {if(epoch===display.epoch)renderAllStudent();} }) || null;
+    studentHasMounted=true;
   } catch {
+    if(epoch!==display.epoch)return;
     studentView = null;
     studentLoadFailed = true;
   }
@@ -1355,10 +1515,36 @@ async function loadAll() {
   }
 }
 
+function mountSourceViews(){
+  const bound=display.bindRequest(),options={demo:display.mode==='demo'};
+  for(const id of ['pc-inspection','pc-status','sdp-status','query-history'])$(id).replaceChildren();
+  createPcInspectionView($('pc-inspection'),bound,options);
+  createPcStatusView($('pc-status'),bound,options);
+  createSdpStatusView($('sdp-status'),bound,options);
+  historyView=createHistoryView($('query-history'),bound,options);
+}
+function switchDisplayMode(){
+  display.setMode($('demo-toggle').checked?'demo':'actual');
+  document.documentElement.dataset.displayMode = display.mode;
+  demoConnections={native:null,ai:null};
+  clearTimeout(connectExpiryTimer);connectExpiryTimer=null;
+  aiConnect?.reset();nativeLogin?.reset();lastIdentityKey=null;appConnectInvalidated=false;
+  clearAction();state.errors.clear();state.diagnostics={status:'idle'};diagnosticsText='';$('diag-load').disabled=false;
+  $('diag-output').textContent='';$('diag-output').hidden=true;$('diag-status').textContent='';$('diag-copy').disabled=true;
+  connectHelpText='';$('ai-connect-help-output').textContent='';$('ai-connect-help-output').hidden=true;$('ai-connect-help-status').textContent='';$('ai-connect-help-copy').disabled=true;
+  studentView=null;studentLoadFailed=false;
+  $('onboarding-host').replaceChildren();
+  mountSourceViews();
+  const demo=display.mode==='demo';
+  $('display-mode-note').dataset.mode=display.mode;
+  $('display-mode-note').textContent=demo?'데모 모드 · 모든 수치·시각·계정·기록은 설명용 예제입니다. 실제 PC 조회·AI 호출·로그인·조치는 수행하지 않습니다.':'실제 조회 모드 · PC 측정은 버튼을 눌러 실행합니다. 연결되지 않은 항목은 확인 불가로 표시합니다.';
+  renderNativeLogin();renderAiConnect();
+  loadStudentModule();loadAll();
+}
 function init() {
-  createPcInspectionView($('pc-inspection'),request);
-  createPcStatusView($('pc-status'),request);
-  historyView=createHistoryView($('query-history'),request);
+  setupPersistentHeader();
+  mountSourceViews();
+  $('demo-toggle').addEventListener('change',switchDisplayMode);
   setupNav();
   $('refresh').addEventListener('click', () => loadAll());
   $('diag-load').addEventListener('click', () => loadDiagnostics());
@@ -1371,17 +1557,17 @@ function init() {
   $('action-confirm').addEventListener('click', () => executeAction());
   $('action-result-load').addEventListener('click', () => {if(actionIntent&&!$('action-result-load').disabled)actionOperation('result',{requestId:actionIntent.requestId});});
   $('action-cancel').addEventListener('click', () => clearAction({cancelled:true}));
-  $('ai-connect-start').addEventListener('click', () => { appConnectInvalidated = false; if (aiConnect) aiConnect.start(); });
-  $('ai-connect-finish').addEventListener('click', () => { if (aiConnect) aiConnect.finish(); });
-  $('ai-connect-status').addEventListener('click', () => { if (aiConnect) aiConnect.refresh(); });
-  $('ai-connect-cancel').addEventListener('click', () => { if (aiConnect) aiConnect.cancel(); });
+  $('ai-connect-start').addEventListener('click', () => { if(display.mode==='demo')return demoConnectionAction('ai','start'); appConnectInvalidated = false; if (aiConnect) aiConnect.start(); });
+  $('ai-connect-finish').addEventListener('click', () => { if(display.mode==='demo')return demoConnectionAction('ai','finish'); if (aiConnect) aiConnect.finish(); });
+  $('ai-connect-status').addEventListener('click', () => { if(display.mode==='demo')return demoConnectionAction('ai','status'); if (aiConnect) aiConnect.refresh(); });
+  $('ai-connect-cancel').addEventListener('click', () => { if(display.mode==='demo')return demoConnectionAction('ai','cancel'); if (aiConnect) aiConnect.cancel(); });
   $('ai-connect-check').addEventListener('click', () => checkAiConnection());
   $('ai-connect-help').addEventListener('click', () => showConnectHelp());
   $('ai-connect-help-copy').addEventListener('click', () => copyConnectHelp());
-  $('native-login-start').addEventListener('click', () => { if (nativeLogin) nativeLogin.start(); });
-  $('native-login-redeem').addEventListener('click', () => { if (nativeLogin) nativeLogin.redeem(); });
-  $('native-login-check').addEventListener('click', () => { if (nativeLogin) nativeLogin.check(); });
-  $('native-login-cancel').addEventListener('click', () => { if (nativeLogin) nativeLogin.cancel(); });
+  $('native-login-start').addEventListener('click', () => { if(display.mode==='demo')return demoConnectionAction('native','start'); if (nativeLogin) nativeLogin.start(); });
+  $('native-login-redeem').addEventListener('click', () => { if(display.mode==='demo')return demoConnectionAction('native','redeem'); if (nativeLogin) nativeLogin.redeem(); });
+  $('native-login-check').addEventListener('click', () => { if(display.mode==='demo')return demoConnectionAction('native','current'); if (nativeLogin) nativeLogin.check(); });
+  $('native-login-cancel').addEventListener('click', () => { if(display.mode==='demo')return demoConnectionAction('native','cancel'); if (nativeLogin) nativeLogin.cancel(); });
   // 페이지를 떠날 때는 화면 진행과 이 화면의 요청만 끝낸다. 원격 취소를 보내거나 성공이라고 주장하지 않는다.
   window.addEventListener('pagehide', () => { if (nativeLogin) nativeLogin.reset(); });
   guardStaticArt();

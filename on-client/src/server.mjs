@@ -201,6 +201,7 @@ export function createOnServer(serverOptions={}) {
   if(!serverOptions||typeof serverOptions!=='object'||types.isProxy(serverOptions))throw Error('INVALID_SERVER_AI_CONFIGURATION');
   const history=createHistoryStore({directory:serverOptions.historyDirectory,clock:serverOptions.clock});
   files.set('/availability-view.mjs','public/availability-view.mjs');
+  files.set('/demo-data.mjs','public/demo-data.mjs');
   files.set('/history-view.mjs','public/history-view.mjs');
   files.set('/pc-status-view.mjs','public/pc-status-view.mjs');
   const pcHistory=createHistoryStore({directory:serverOptions.historyDirectory,clock:serverOptions.clock,category:'pc'});
@@ -368,8 +369,11 @@ export function createOnServer(serverOptions={}) {
       finally{clearTimeout(timer);lifetime.signal.removeEventListener('abort',cancel);controller.abort();}
     }
     const requestId=randomUUID();
+    // Display mode is request-local. Never switch the shared engine or another tab.
+    const actualDisplay=req.headers['x-keshev-display-mode']==='actual';
+    const responseMeta=()=>({...meta(),mode:actualDisplay&&mode==='demo'?'disconnected':mode});
     let actionRequest=false;
-    const send=(status,body)=>{if(res.destroyed||res.writableEnded)return;res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-on-request-id':requestId});res.end(JSON.stringify({...body,meta:meta()}));};
+    const send=(status,body)=>{if(res.destroyed||res.writableEnded)return;res.writeHead(status,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','x-on-request-id':requestId});res.end(JSON.stringify({...body,meta:responseMeta()}));};
     const {captureSource,assertCurrent,readMapping,finishMapping}=sourceReader({call,bounded,assertAlive});
     const authOptions=(binding)=>({expectedScope:Object.freeze({subjectId:binding.canonicalStudentId,projectId:binding.projectId,appId:'aleph-on',audience:'on-client'}),
       expectedContext:Object.freeze({alephUserId:binding.alephUserId,siteId:binding.siteId,identityVersion:binding.identityVersion}),signal:lifetime.signal});
@@ -382,6 +386,9 @@ export function createOnServer(serverOptions={}) {
       if(url.search)throw engineError('QUERY_REJECTED','지원하지 않는 요청입니다.',400);
       if(url.pathname.startsWith('/api/')&&req.headers['sec-fetch-site']==='cross-site')throw engineError('ORIGIN_REJECTED','');
       if(req.method==='POST'&&req.headers.origin!==`http://${host}`)throw engineError('ORIGIN_REJECTED','앱 화면에서 다시 요청하세요.',403);
+      if(actualDisplay&&mode==='demo'&&(/^\/api\/(me|apps|events|devices|sessions|access|history)(?:\/|$)/.test(url.pathname)||/^\/api\/(actions|learner-support)(?:\/|$)/.test(url.pathname)||['/api/ai/check','/api/ai/explain'].includes(url.pathname))){
+        send(503,{ok:false,error:{code:'REAL_SOURCE_UNAVAILABLE',message:'확인 불가 · 실제 계정·업무 서비스의 조회 원천이 연결되지 않았습니다. 담당자에게 연결 환경을 확인하세요. PC 조회와 SDP 상태는 각각 확인할 수 있습니다.',retryable:false}});return;
+      }
       if(url.pathname.startsWith('/api/native-login/')){
         const kind=url.pathname.slice('/api/native-login/'.length);
         if(req.method!=='POST'||!['start','status','redeem','current','cancel'].includes(kind)){send(404,{ok:false,error:{code:'NOT_FOUND',message:'지원하지 않는 주소입니다.',retryable:false}});return;}
@@ -779,7 +786,7 @@ export function createOnServer(serverOptions={}) {
       if(req.method==='GET'&&url.pathname==='/api/diagnostics'){
         // 자동 호출이나 비밀 원문·전체 설정 출력 없이 로컬 연결 상태만 진단한다.
         const info=(mappedAi??defaultAi).connectionInfo();
-        send(200,{ok:true,data:{requestId,component:'on-client',version:'0.1.0',engine:{mode,code:mode==='disconnected'?'ENGINE_NOT_CONNECTED':mode==='demo'?'DEMO_ONLY':'ADAPTER_CONFIGURED'},
+        send(200,{ok:true,data:{requestId,component:'on-client',version:'0.1.0',engine:{mode:responseMeta().mode,code:actualDisplay&&mode==='demo'?'REAL_SOURCE_UNAVAILABLE':mode==='disconnected'?'ENGINE_NOT_CONNECTED':mode==='demo'?'DEMO_ONLY':'ADAPTER_CONFIGURED'},
           ai:{configured:info?.configured===true,authorized:false,authorizationRequired:true},checkedAt:clock().toISOString(),workbenchRequiredAtRuntime:false}});return;
       }
       if(req.method==='GET'&&url.pathname==='/api/vulnerabilities'){
