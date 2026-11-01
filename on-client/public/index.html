@@ -133,9 +133,9 @@
                     <li>확인 번호를 보고 「승인 페이지 열기」로 Workbench 승인 화면을 엽니다.</li>
                     <li>같은 번호인지 확인하고 승인한 뒤 「승인했으며 연결 확인」을 누릅니다.</li>
                     <li>연결 완료·실패·확인 불가 중 결과를 확인합니다.</li>
-                    <li>연결 완료면 「현재 API 연결 점검」으로 모델 응답을 점검합니다.</li>
+                    <li>연결 완료면 「AI 연결 점검」으로 모델 응답을 점검합니다.</li>
                   </ol>
-                <p>Workbench 로그인 승인 화면에서 이 앱 연결을 승인하면 연결 정보는 이 PC의 앱 서버가 따로 보관합니다. 연결 뒤에는 Workbench를 계속 켜 둘 필요가 없습니다. 이 안내는 연결 절차이며 통과·점수·순위 판정이 아닙니다.</p>
+                <p>Workbench 로그인 승인 화면에서 이 앱 연결을 승인하면 연결 정보는 이 PC의 앱 서버가 따로 보관합니다. 연결 뒤에는 Workbench를 계속 켜 둘 필요가 없습니다.</p>
               </details>
               <div class="row">
                 <button type="button" id="ai-connect-start" class="btn" disabled>AI 연결 시작</button>
@@ -176,7 +176,7 @@
 
         <section class="card provided" aria-labelledby="vulnerabilities-title">
           <h2 id="vulnerabilities-title">설치 패키지와 취약점 정보</h2>
-          <p class="muted">서버에 연결한 프로젝트의 공개 조회 승인 패키지만 정확한 설치 버전으로 대조합니다. 조회 실패와 미조회는 알려진 항목 없음이 아닙니다.</p>
+          <p class="muted">담당자가 지정하고 공개 조회를 승인한 소프트웨어 부품(패키지)의 설치 버전을 확인합니다. PC 전체 프로그램 검사는 아니며, 조회 실패와 미조회는 알려진 취약점 없음이 아닙니다.</p>
           <div class="row">
             <button type="button" id="vulnerabilities-load" class="btn">설치 패키지 조회</button>
             <button type="button" id="vulnerabilities-cancel" class="btn" disabled>패키지 조회 취소</button>
@@ -260,15 +260,6 @@
         <h1>사용 안내</h1>
         <div id="student-guide" class="card student"></div>
       </section>
-      <details class="implementation-info">
-        <summary>구현 정보 · 제공 기능과 학생 변경 부분</summary>
-        <p>제공 공통 UI와 학생 구현은 구분됩니다. 제공 코드는 학생 성취로 계산되지 않으며, 예제·연결 없음 상태는 실제 연결 성공이 아닙니다.</p>
-        <p>제공 기능: 로그인·기기·세션, 업무 앱 판정, 접속·XDR 기록, 도움정보, 계정·AI 연결, 패키지 조회와 조치 결과의 공통 화면입니다.</p>
-        <p>학생 변경: PC 측정·구성 조회·그래프·조회 이력, 내 보안 현황 요약·재조회, 기록 필터·사건 상세, 사용 안내와 현재 화면의 배치·다크 스타일입니다.</p>
-        <p><code>student/extension.mjs</code>: renderIdentity, renderDecision, renderEvents, renderStatus, renderAiConnection, renderVulnerabilities, renderExplanation, renderAction, renderGuide.</p>
-        <p>PC 표시·이력은 <code>public/pc-status-view.mjs</code>, <code>public/pc-inspection-view.mjs</code>, <code>public/history-view.mjs</code>에서 구성합니다. 공통 화면의 배치·버튼 표시는 <code>public/index.html</code>, <code>public/app.js</code>, <code>public/style.css</code>의 변경입니다.</p>
-        <p>현재 프로젝트 실행 화면 기준입니다. 제공 runtime/host의 설치형 앱에도 같은 화면이 반영되는지는 별도 확인이 필요합니다.</p>
-      </details>
     </main>
   </div>
 </body>

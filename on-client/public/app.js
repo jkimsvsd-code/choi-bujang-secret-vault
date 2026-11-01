@@ -9,7 +9,7 @@ import { createPcStatusView } from '/pc-status-view.mjs';
 let historyView;
 
 const STUDENT_MODULE = '/student/extension.mjs';
-const STUDENT_PENDING = '학생 구현 대기';
+const STUDENT_PENDING = '표시 기능을 사용할 수 없습니다. 새로고침한 뒤에도 같으면 담당자에게 문의하세요.';
 const REQUEST_TIMEOUT_MS = 10000;
 const AI_REQUEST_TIMEOUT_MS = 310000;
 const aiDeadlinePath = path => ['/api/ai/check', '/api/ai/explain', '/api/learner-support/gpt'].includes(path);
@@ -164,10 +164,10 @@ function validAiCheck(data, meta) {
 }
 
 const AI_MESSAGES = Object.freeze({
-  ON_AI_PROVISIONING_PENDING: '학생 앱 이용 권한의 발급·연결을 준비 중입니다. 담당자에게 확인하세요.',
-  WB_CLCO_AUTH_REQUIRED: '앱 전용 열쇠의 인증을 확인하세요. Workbench 열쇠를 복사하지 마세요.',
-  WB_CLCO_ACCESS_BLOCKED: '학생 앱 AI 이용이 제한됐습니다. 운영 중지 상태와 이용 권한을 담당자에게 확인하세요.',
-  WB_CLCO_COHORT_BUDGET_EXHAUSTED: '반의 AI 사용량이 소진됐습니다. 담당자에게 확인하세요.',
+  ON_AI_PROVISIONING_PENDING: '이 앱의 이용 권한과 연결을 준비 중입니다. 담당자에게 확인하세요.',
+  WB_CLCO_AUTH_REQUIRED: '앱 인증을 확인할 수 없습니다. 담당자에게 인증 상태 확인을 요청하세요. 열쇠를 직접 입력하거나 복사하지 마세요.',
+  WB_CLCO_ACCESS_BLOCKED: '이 앱의 AI 이용이 제한됐습니다. 운영 중지 상태와 이용 권한을 담당자에게 확인하세요.',
+  WB_CLCO_COHORT_BUDGET_EXHAUSTED: '소속 그룹의 AI 사용량이 소진됐습니다. 담당자에게 확인하세요.',
   WB_CLCO_RATE_LIMITED: 'AI 요청이 잠시 제한됐습니다. 잠시 후 직접 다시 요청하세요.',
   WB_CLCO_LIMIT_REACHED: 'AI 이용 한도에 도달했습니다. 담당자에게 확인하세요.',
   WB_CLCO_SESSION_CLOSED: '현재 AI 이용 시간이 아닙니다. 이용 시간을 확인하세요.',
@@ -178,7 +178,7 @@ const AI_MESSAGES = Object.freeze({
   WB_CLCO_CANCELLED: 'AI 요청을 취소했습니다. 이전 응답은 현재 결과가 아닙니다.',
   CANCELLED: 'AI 요청을 취소했습니다. 이전 응답은 현재 결과가 아닙니다.',
   REQUEST_CANCELLED: 'AI 요청을 취소했습니다. 이전 응답은 현재 결과가 아닙니다.',
-  MODEL_NOT_CONFIGURED: '서버에 사용할 AI 모델을 설정하세요.',
+  MODEL_NOT_CONFIGURED: '사용할 AI 모델이 설정되지 않았습니다. 담당자에게 설정 확인을 요청하세요.',
   ON_AI_AUTHORIZATION_CHANGED: 'AI 이용 권한 내용이 점검 도중 바뀌었습니다. 다시 점검하기 전에 담당자에게 현재 권한을 확인하세요.',
   ON_AI_MODEL_LIST_EMPTY: '현재 앱 권한으로 쓸 수 있는 AI 모델이 없습니다. 담당자에게 모델 허용 설정을 확인하세요.',
   SUBJECT_SCOPE_UNVERIFIED: '현재 로그인과 사건·프로젝트의 연결을 확인할 수 없습니다.',
@@ -633,7 +633,7 @@ function showConnectHelp() {
   output.textContent = connectHelpText;
   output.hidden = false;
   $('ai-connect-help-copy').disabled = false;
-  $('ai-connect-help-status').textContent = '아래 내용을 직접 확인한 뒤 복사하세요. 연결 ID·승인 주소·학생 ID·로컬 경로는 넣지 않습니다.';
+  $('ai-connect-help-status').textContent = '아래 내용을 직접 확인한 뒤 복사하세요. 연결 ID·승인 주소·사용자 식별정보·로컬 경로는 넣지 않습니다.';
 }
 
 async function copyConnectHelp() {
@@ -1220,35 +1220,35 @@ function studentData(kind) {
 }
 
 const STUDENT_SLOTS = {
-  guide: { slot: 'student-guide', fn: 'renderGuide' },
-  identity: { slot: 'student-identity', fn: 'renderIdentity' },
-  decision: { slot: 'student-decision', fn: 'renderDecision' },
-  events: { slot: 'student-events', fn: 'renderEvents' },
-  status: { slot: 'student-status', fn: 'renderStatus' },
-  vulnerabilities: { slot: 'student-vulnerabilities', fn: 'renderVulnerabilities' },
-  aiConnection: { slot: 'student-ai-connection', fn: 'renderAiConnection' },
-  explanation: { slot: 'student-explanation', fn: 'renderExplanation' },
-  action: { slot: 'student-action', fn: 'renderAction' },
+  guide: { slot: 'student-guide', fn: 'renderGuide', label: '사용 안내' },
+  identity: { slot: 'student-identity', fn: 'renderIdentity', label: '내 보안 현황' },
+  decision: { slot: 'student-decision', fn: 'renderDecision', label: '판정 상세' },
+  events: { slot: 'student-events', fn: 'renderEvents', label: '이번에 받은 보안 기록' },
+  status: { slot: 'student-status', fn: 'renderStatus', label: '연결 상태·알림' },
+  vulnerabilities: { slot: 'student-vulnerabilities', fn: 'renderVulnerabilities', label: '패키지 조회 상세' },
+  aiConnection: { slot: 'student-ai-connection', fn: 'renderAiConnection', label: 'AI 연결 상태' },
+  explanation: { slot: 'student-explanation', fn: 'renderExplanation', label: 'AI 사건 설명' },
+  action: { slot: 'student-action', fn: 'renderAction', label: '조치 상태' },
 };
 
 function renderStudent(kind) {
-  const { slot, fn } = STUDENT_SLOTS[kind];
+  const { slot, fn, label } = STUDENT_SLOTS[kind];
   const target = $(slot);
   if (studentLoadFailed) {
-    return setChildren(target, stateBox('empty', `${STUDENT_PENDING} (student/extension.mjs를 불러오지 못했습니다)`));
+    return setChildren(target, stateBox('error', `${label} 화면을 불러오지 못했습니다. 새로고침한 뒤에도 같으면 담당자에게 문의하세요.`));
   }
-  if (!studentView || typeof studentView[fn] !== 'function') return setChildren(target, stateBox('empty', STUDENT_PENDING));
+  if (!studentView || typeof studentView[fn] !== 'function') return setChildren(target, stateBox('empty', `${label}: ${STUDENT_PENDING}`));
   let output;
   try {
     output = studentView[fn](studentData(kind));
   } catch {
-    return setChildren(target, stateBox('error', `학생 구현 ${fn} 실행 중 오류가 발생했습니다. 제공 UI는 계속 동작합니다.`));
+    return setChildren(target, stateBox('error', `${label} 표시 중 오류가 발생했습니다. 새로고침한 뒤에도 같으면 담당자에게 문의하세요. 다른 화면의 결과는 각각 확인하세요.`));
   }
   // 학생 반환은 DOM 요소 또는 텍스트만 허용한다. 문자열은 HTML로 해석하지 않는다.
   if (output instanceof Element) return setChildren(target, output);
   if (typeof output === 'string') return setChildren(target, el('p', { className: 'student-text', text: output }));
-  if (output == null) return setChildren(target, stateBox('empty', STUDENT_PENDING));
-  setChildren(target, stateBox('error', `학생 구현 ${fn}의 반환 형식이 DOM 요소 또는 텍스트가 아닙니다.`));
+  if (output == null) return setChildren(target, stateBox('empty', `${label}: 표시할 결과가 없습니다. 조회 상태를 확인한 뒤 다시 조회하세요.`));
+  setChildren(target, stateBox('error', `${label} 내용을 표시할 수 없습니다. 새로고침한 뒤에도 같으면 담당자에게 문의하세요.`));
 }
 
 function renderAllStudent() {
@@ -1266,7 +1266,7 @@ const studentApi = Object.freeze({
   },
   get(path) {
     if (!STUDENT_GET_PATHS.includes(path)) {
-      return Promise.resolve(localFailure('NOT_ALLOWED', '학생 구현에서 허용되지 않은 주소입니다.', UNKNOWN_META));
+      return Promise.resolve(localFailure('NOT_ALLOWED', '이 앱에서 허용되지 않은 조회입니다. 담당자에게 앱 버전과 지원 기능을 확인하세요.', UNKNOWN_META));
     }
     return request(path);
   },

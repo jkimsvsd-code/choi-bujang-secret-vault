@@ -47,7 +47,7 @@ test('timeline preserves event-time ordering and native kind filter',async()=>{
   await buttons(root)[1].listeners.click();
   const select=walk(root).find(n=>n.tagName==='select');select.value='전체';select.listeners.change();
   assert.ok(root.textContent.indexOf('newer')<root.textContent.indexOf('older'));
-  select.value='access';select.listeners.change();const timeline=walk(root).find(n=>n.attrs['aria-label']==='학생 핵심 보안 기록 타임라인');assert.doesNotMatch(timeline.textContent,/newer/);assert.match(timeline.textContent,/older/);
+  select.value='access';select.listeners.change();const timeline=walk(root).find(n=>n.attrs['aria-label']==='내 보안 현황 보안 기록 타임라인');assert.doesNotMatch(timeline.textContent,/newer/);assert.match(timeline.textContent,/older/);
 });
 
 test('cards expose source, summary and time while detail stays collapsed after refresh',async()=>{
