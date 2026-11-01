@@ -4,8 +4,8 @@
 #pc-status .pc-controls { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:16px 0; }
 #pc-status .pc-controls label { display:flex; align-items:center; gap:8px; }
 #pc-status select { font:inherit; padding:8px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--text); }
-#pc-status .pc-measure { background:var(--accent); color:white; border-color:var(--accent); }
-#pc-status .pc-measure:hover:not(:disabled) { color:white; background:#19449d; }
+#pc-status .pc-measure { background:var(--accent-solid); color:white; border-color:var(--control-border); }
+#pc-status .pc-measure:hover:not(:disabled) { color:white; background:var(--accent-solid-hover); }
 #pc-status .pc-help { color:var(--muted); margin:12px 0; }
 #pc-status summary { cursor:pointer; padding:10px 4px; }
 #pc-status .pc-status-message { background:var(--accent-soft); border-radius:6px; padding:10px 12px; }
@@ -41,25 +41,30 @@
 #pc-status .pc-history-table th:nth-child(3), #pc-status .pc-history-table td:nth-child(3) { min-width:64px; white-space:nowrap; overflow-wrap:normal; }
 
 :root {
-  --bg: #f5f6f8;
-  --surface: #ffffff;
-  --border: #d9dde3;
-  --text: #1c2430;
-  --muted: #5a6472;
-  --accent: #2357c6;
-  --accent-soft: #e7eefc;
-  --allow: #1d7a3e;
-  --allow-soft: #e5f4ea;
-  --deny: #b42318;
-  --deny-soft: #fdeceb;
-  --challenge: #9a5b00;
-  --challenge-soft: #fff4e0;
-  --unknown: #4b5563;
-  --unknown-soft: #eceff3;
-  --student: #6b3fb3;
-  --student-soft: #f3edfb;
+  /* Local preview dark edition. Packaged host styling must be checked separately. */
+  color-scheme: dark;
+  --bg: #0e1520;
+  --surface: #172130;
+  --border: #35455c;
+  --control-border: #71839e;
+  --text: #edf2fa;
+  --muted: #afbdd1;
+  --accent: #94baff;
+  --accent-soft: #20365a;
+  --accent-solid: #285cbd;
+  --accent-solid-hover: #3169cf;
+  --allow: #83dcaa;
+  --allow-soft: #193b2e;
+  --deny: #ffaba5;
+  --deny-soft: #45272d;
+  --challenge: #f3cb80;
+  --challenge-soft: #3c3222;
+  --unknown: #c3cede;
+  --unknown-soft: #293443;
+  --student: #cbb2ff;
+  --student-soft: #33294b;
   --radius: 8px;
-  --focus: 0 0 0 3px #f5b400;
+  --focus: 0 0 0 3px #f3cb80;
   font-family: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
   font-size: 15px;
   line-height: 1.5;
@@ -69,6 +74,10 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 1024px; }
+a { color: var(--accent); }
+a:visited { color: var(--student); }
+input { accent-color: var(--accent); }
+::selection { background: var(--accent); color: var(--bg); }
 h1 { font-size: 1.5rem; margin: 0 0 16px; }
 h2 { font-size: 1.05rem; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 h3 { font-size: 1rem; margin: 0; }
@@ -93,7 +102,7 @@ h4 { font-size: 0.9rem; margin: 0 0 4px; color: var(--muted); }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; }
 .brand-mark {
   display: inline-grid; place-items: center; width: 32px; height: 32px;
-  border-radius: 50%; background: var(--accent); color: #fff; font-size: 0.95rem;
+  border-radius: 50%; background: var(--accent-solid); color: #fff; font-size: 0.95rem;
 }
 .brand-name small { font-weight: 400; color: var(--muted); margin-left: 6px; }
 .topbar-status { display: flex; align-items: center; gap: 12px; }
@@ -323,3 +332,15 @@ main:focus { outline: none; }
 #student-guide .student-guide-features > summary { padding:10px 0; cursor:pointer; }
 #student-guide .student-guide-features > h3 { margin:16px 0 8px; }
 #student-guide .student-guide-features > p { margin:0 0 16px; }
+
+/* Keep control edges and keyboard focus visible on dark surfaces. */
+.btn, #query-history button, #pc-status select, #pc-inspection select,
+#student-events select, #query-history select, [data-student-dashboard] select {
+  border-color: var(--control-border);
+}
+.btn-link:visited { color: var(--text); }
+[data-student-dashboard] dialog { box-shadow: 0 24px 80px rgb(0 0 0 / 55%); }
+[data-student-dashboard] dialog::backdrop { background: rgb(3 8 16 / 72%); }
+/* The existing start button uses inline var(--accent) with white text. */
+[data-student-dashboard] [data-guide-control] { --accent: var(--accent-solid); }
+[data-student-dashboard] [data-guide-control]:hover:not(:disabled) { --accent: var(--accent-solid-hover); }
