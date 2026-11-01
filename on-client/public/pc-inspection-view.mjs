@@ -2,9 +2,19 @@ const names={network:'네트워크 구성',firewall:'방화벽 설정',system:'S
 const time=v=>Number.isFinite(Date.parse(v))?new Date(v).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',hour12:false})+' KST':'확인 불가';
 export function createPcInspectionView(root,request){
   const add=(p,t,text)=>{const n=document.createElement(t);n.textContent=text;p.append(n);return n;};
-  add(root,'p','일반 권한·읽기 전용 조회입니다. 방화벽·보안 설정을 변경하지 않습니다. 아래 실측은 보안 기록의 demo 예제와 구분됩니다.');
-  add(root,'p','Windows 경고·오류 건수는 침해나 공격 탐지 결과가 아닙니다. 최근 24시간 동안 현재 로그에 남아 있는 경고(Level 3)·오류(Level 2)만 집계하며, 로그 삭제·보존 제한으로 누락될 수 있습니다.').className='inspection-notice';
-  add(root,'p','네트워크는 IP 사용 구성 어댑터를 조회하며, 주소는 이 PC의 로컬 조회 이력에 저장됩니다. 외부 전송하지 않습니다. 방화벽 True/False는 프로필 활성 설정이며 현재 네트워크 프로필의 선택 여부가 아닙니다. NotConfigured는 해당 필드 미지정으로, 실제 허용·차단을 추정하지 않습니다.');
+  add(root,'p','이 PC의 일반 권한·읽기 전용 조회입니다. 방화벽·보안 설정을 변경하지 않으며 보안 기록의 예제 자료와 구분됩니다.').className='feature-note';
+  add(root,'p','최근 24시간 Windows 경고·오류 건수는 침해나 공격 탐지 결과가 아닙니다.').className='inspection-notice';
+  add(root,'p','네트워크 주소는 이 PC의 로컬 조회 이력에 저장됩니다. 외부 전송하지 않습니다.').className='feature-note';
+  const message=add(root,'p','조회 전 · 자동 조회하지 않습니다.');message.setAttribute('role','status');message.className='inspection-status-message';
+  const controls=add(root,'div','');controls.className='inspection-controls';
+  const query=add(controls,'button','PC 구성·기록 조회'),history=add(controls,'button','저장된 PC 구성 보기');
+  query.type='button';query.className='btn btn-primary';history.type='button';history.className='btn';
+  const label=add(controls,'label','기록 종류 '),filter=add(label,'select','');filter.setAttribute('aria-label','PC 구성 기록 종류');
+  for(const [key,value] of [['all','전체'],...Object.entries(names)])add(filter,'option',value).value=key;
+  const help=add(root,'details','');help.className='feature-help';add(help,'summary','조회 범위와 결과 읽는 법');
+  add(help,'p','최근 24시간 동안 현재 로그에 남아 있는 경고(Level 3)·오류(Level 2)만 집계하며, 로그 삭제·보존 제한으로 누락될 수 있습니다. 집계 구간이 겹치는 기록의 건수를 합산하지 마세요.');
+  add(help,'p','네트워크는 IP 사용 구성 어댑터를 조회합니다. 방화벽 True/False는 프로필 활성 설정이며 현재 네트워크 프로필의 선택 여부가 아닙니다. NotConfigured는 해당 필드 미지정으로, 실제 허용·차단을 추정하지 않습니다.');
+  add(help,'p','저장된 PC 구성 보기는 이전 결과만 불러옵니다. 새로 읽으려면 PC 구성·기록 조회를 누르세요.');
   const sdp=add(root,'section','');sdp.setAttribute('aria-label','별도 SDP 연결 상태');
   add(sdp,'h3','SDP 연결 상태 · PC 조회와 별개');
   const sdpText=add(sdp,'p','SDP 연결 확인 전 · PC 조회 성공은 SDP 연결 성공이 아닙니다.');sdpText.setAttribute('role','status');
@@ -18,12 +28,6 @@ export function createPcInspectionView(root,request){
         `SDP 연결 확인 불가 · ${r.error?.message||'응답 형식 오류'}`;
     }catch{sdpText.textContent='SDP 연결 확인 불가 · 요청 실패';}finally{sdpButton.disabled=false;}
   });
-  const controls=add(root,'div','');controls.className='inspection-controls';
-  const query=add(controls,'button','PC 구성·기록 조회'),history=add(controls,'button','PC 구성 이력 조회');
-  for(const b of [query,history]){b.type='button';b.className='btn';}
-  const label=add(controls,'label','기록 종류 '),filter=add(label,'select','');filter.setAttribute('aria-label','PC 구성 기록 종류');
-  for(const [key,value] of [['all','전체'],...Object.entries(names)])add(filter,'option',value).value=key;
-  const message=add(root,'p','조회 전 · 자동 조회하지 않습니다.');message.setAttribute('role','status');
   const list=add(root,'ol','');list.className='inspection-timeline';list.setAttribute('aria-label','PC 구성 조회 타임라인');
   const windows=add(root,'div','');windows.className='inspection-windows';
   let records=[];
@@ -59,7 +63,7 @@ export function createPcInspectionView(root,request){
       if(filter.value!=='all'&&filter.value!==kind)continue;
       const group=add(windows,'section','');group.setAttribute('aria-label',`${names[kind]} 집계`);
       add(group,'h3',`${names[kind]} · 최신 경고·오류`);
-      if(!ordered.length){add(group,'p','조회 자료 없음 · PC 구성·기록 조회 또는 PC 구성 이력 조회를 누르세요.');continue;}
+      if(!ordered.length){add(group,'p','조회 자료 없음 · PC 구성·기록 조회 또는 저장된 PC 구성 보기를 누르세요.');continue;}
       const latest=ordered[0],current=latest.sections.find(s=>s.kind===kind);
       add(group,'p',`실측 · 최신 조회 ${time(latest.queriedAt)} · 완료/시도 ${time(current?.checkedAt)}`);
       add(group,'p',`최근 24시간 집계: ${time(latest.windowStart)} ~ ${time(latest.windowEnd)}`);
@@ -112,7 +116,7 @@ export function createPcInspectionView(root,request){
       records=r.data;
       if(current){records=records.filter(r=>r.queriedAt!==current.queriedAt);records.unshift(current);}
       render();const unknown=current?.sections.filter(s=>s.status==='unknown').length;
-      message.textContent=`실측 조회 이력 ${records.length}건 · 최근 30일, 최대 1,000회${current?` · 이번 조회 ${4-unknown}/4개 항목 성공, ${unknown}개 확인 불가`:''}${current?.saved===false?' · 저장 실패':''} · SDP 상태와 별개입니다.`;
+      message.textContent=`${measuring?'이번 PC 구성·기록 조회 결과입니다.':'저장된 결과를 불러왔습니다. PC 구성을 새로 조회하지 않았습니다.'} · 조회 이력 ${records.length}건 · 최근 30일, 최대 1,000회${current?` · 이번 조회 ${4-unknown}/4개 항목 성공, ${unknown}개 확인 불가`:''}${current?.saved===false?' · 저장 실패':''} · SDP 상태와 별개입니다.`;
     }catch(e){message.textContent=`확인 불가 · ${e.message||'요청 실패'} · 표시된 이력은 이전 자료입니다.`;}
     finally{query.disabled=false;history.disabled=false;}
   }

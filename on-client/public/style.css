@@ -121,7 +121,11 @@ h4 { font-size: 0.9rem; margin: 0 0 4px; color: var(--muted); }
   display: grid; grid-template-columns: 220px minmax(0, 1fr);
   min-height: calc(100vh - 60px);
 }
-.sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px 12px; }
+.sidebar {
+  position: sticky; top: 0; align-self: start; max-height: 100vh; overflow-y: auto;
+  min-height: calc(100vh - 60px);
+  background: var(--surface); border-right: 1px solid var(--border); padding: 16px 12px;
+}
 #nav { display: flex; flex-direction: column; gap: 4px; }
 #nav [role="tab"] {
   text-align: left; padding: 10px 12px; border: 0; border-radius: var(--radius);
@@ -344,3 +348,52 @@ main:focus { outline: none; }
 /* The existing start button uses inline var(--accent) with white text. */
 [data-student-dashboard] [data-guide-control] { --accent: var(--accent-solid); }
 [data-student-dashboard] [data-guide-control]:hover:not(:disabled) { --accent: var(--accent-solid-hover); }
+
+/* Task controls first; supporting explanations remain available in native details. */
+.feature-note { margin:8px 0 12px; color:var(--muted); font-size:.9rem; }
+.feature-help { margin:12px 0; border-top:1px solid var(--border); }
+.feature-help > summary { cursor:pointer; padding:12px 4px; color:var(--muted); }
+.feature-help[open] > summary { color:var(--text); }
+.feature-help > p { margin:4px 4px 14px; color:var(--muted); }
+.feature-help .connect-steps { margin:4px 4px 14px; padding-left:20px; }
+.implementation-info { margin-top:24px; padding:0 14px; border:1px solid var(--border); border-radius:var(--radius); color:var(--muted); font-size:.85rem; }
+.implementation-info > summary { padding:12px 0; cursor:pointer; }
+.implementation-info code { overflow-wrap:anywhere; }
+.btn { min-height:40px; }
+.btn.btn-primary { background:var(--accent-solid); color:#fff; border-color:var(--control-border); }
+.btn.btn-primary:hover:not(:disabled) { background:var(--accent-solid-hover); color:#fff; }
+.btn[aria-disabled="true"] { cursor:wait; opacity:.65; }
+#apps .app-button { min-height:44px; }
+#pc-status .pc-controls, #pc-inspection .inspection-controls,
+#query-history .history-controls, .filter-tools {
+  padding:12px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg);
+}
+#pc-status .pc-controls, #pc-inspection .inspection-controls,
+#query-history .history-controls, .filter-main, .filter-fields {
+  display:flex; flex-wrap:wrap; align-items:center; gap:12px;
+}
+#pc-status .pc-controls label, #pc-inspection .inspection-controls label { margin-left:auto; }
+#pc-status .pc-controls label, #pc-inspection .inspection-controls label,
+#query-history .history-controls label, #student-events .student-filter {
+  display:inline-flex; align-items:center; flex-wrap:wrap; gap:8px;
+}
+#student-events .student-filter { margin:0; }
+#pc-status select, #pc-inspection select, #student-events select,
+#query-history select, #query-history .history-controls button { min-height:40px; }
+.filter-tools { margin:16px 0; }
+.filter-extra { border-top:1px solid var(--border); margin-top:12px; }
+.filter-extra > summary { padding:12px 0 0; cursor:pointer; color:var(--muted); }
+.filter-fields { padding-top:12px; }
+.filter-count { margin:0; color:var(--muted); font-size:.85rem; }
+.filter-main .filter-count, #query-history .history-controls .filter-count { margin-left:auto; }
+#pc-inspection .inspection-status-message { padding:10px 12px; background:var(--accent-soft); border-radius:6px; }
+#pc-inspection .inspection-notice { padding:10px 12px; margin:12px 0; }
+#pc-status .pc-help { margin:12px 0; }
+@media (max-width:1100px) {
+  body { min-width:0; }
+  main { min-width:0; padding:20px 16px 40px; }
+  .topbar { height:auto; min-height:60px; flex-wrap:wrap; gap:12px; padding-top:12px; padding-bottom:12px; }
+  .topbar-status { flex-wrap:wrap; }
+  #pc-status .pc-controls label, #pc-inspection .inspection-controls label,
+  .filter-main .filter-count, #query-history .history-controls .filter-count { margin-left:0; }
+}

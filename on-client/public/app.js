@@ -418,15 +418,20 @@ function renderErrors() {
 
 // ---------- 메뉴 ----------
 
+const viewScrollPositions = new Map();
+
 function selectView(view, { focus = false } = {}) {
+  const changed = state.view !== view;
+  if (changed) viewScrollPositions.set(state.view, { top: window.scrollY, left: window.scrollX });
   state.view = view;
   for (const tab of document.querySelectorAll('#nav [role="tab"]')) {
     const selected = tab.dataset.view === view;
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
-    if (selected && focus) tab.focus();
+    if (selected && focus) tab.focus({ preventScroll: true });
     $(tab.getAttribute('aria-controls')).hidden = !selected;
   }
+  if (changed) window.scrollTo({ ...(viewScrollPositions.get(view) || { top: 0, left: 0 }), behavior: 'instant' });
 }
 
 function setupNav() {
@@ -839,7 +844,7 @@ function renderApps() {
             className: 'btn app-button',
             testid: `app-access-${app.id}`,
             'data-app-id': app.id,
-            text: `${app.name || app.id} 접속 요청`,
+            text: `${app.name || app.id} 이용 가능 여부 확인`,
             onclick: (event) => requestAccess(app.id, app.name || app.id, event.currentTarget),
           }),
         ]),
@@ -880,11 +885,11 @@ function renderAccess() {
   const access = state.access;
   if (access.status === 'idle') {
     target.dataset.decision = 'none';
-    return setChildren(target, el('p', { className: 'muted', text: '아직 요청한 앱이 없습니다.' }));
+    return setChildren(target, el('p', { className: 'muted', text: '아직 확인한 앱이 없습니다. 목록에서 이용 가능 여부를 확인하세요.' }));
   }
   if (access.status === 'loading') {
     target.dataset.decision = 'pending';
-    return setChildren(target, stateBox('loading', `${access.appName} 접속 판정 요청 중…`));
+    return setChildren(target, stateBox('loading', `${access.appName} 이용 가능 여부 확인 중…`));
   }
   if (access.status === 'error') {
     const unverified = isUnverified(access);
@@ -898,11 +903,12 @@ function renderAccess() {
   }
   const data = access.data;
   const info = DECISIONS[data.decision];
+  const isDemo = access.meta?.mode === 'demo';
   target.dataset.decision = data.decision;
   setChildren(
     target,
-    el('p', { className: `decision decision-${data.decision}` }, [el('strong', { text: info.label }), ` · ${access.appName}`]),
-    el('p', { text: info.note }),
+    el('p', { className: `decision decision-${data.decision}` }, [el('strong', { text: `${isDemo ? '예제 판정 · ' : ''}${info.label}` }), ` · ${access.appName}`]),
+    el('p', { text: isDemo ? '동작을 설명하기 위한 예제 결과입니다. 실제 서비스의 접속·차단 결과가 아닙니다.' : info.note }),
     el('dl', { className: 'kv' }, [
       el('dt', { text: '사유' }), el('dd', { text: data.reason || '사유 정보 없음' }),
       el('dt', { text: '판정 시각' }), el('dd', { text: formatTime(data.checkedAt) }),

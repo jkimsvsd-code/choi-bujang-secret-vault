@@ -2,13 +2,14 @@ export function createHistoryView(root, request) {
   let generation=0,rows=[],busy=false,notice='';
   const time=v=>new Date(v).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',hour12:false})+' KST';
   const add=(parent,tag,text)=>{const n=document.createElement(tag);n.textContent=text;parent.append(n);return n;};
-  add(root,'p','조회 시각별로 보관한 기록입니다. 같은 사건이 여러 조회에 반복될 수 있어 저장 건수는 고유 사건 수가 아닙니다. 사건 원문은 저장하지 않으며 과거 이력은 현재 보안 상태나 조치 근거가 아닙니다.');
+  add(root,'p','저장된 조회 이력입니다. 새 보안 기록을 조회하는 기능은 아니며, 과거 이력은 현재 보안 상태나 조치 근거가 아닙니다.').className='feature-note';
   const overview=add(root,'p','최근 조회: 확인 전');overview.className='history-overview';
   const controls=add(root,'div','');controls.className='history-controls';
   const load=add(controls,'button','이력 다시 불러오기');load.type='button';
   const label=add(controls,'label','기록 종류 '),kind=add(label,'select','');kind.setAttribute('aria-label','저장 이력 종류');
   for(const [v,t] of [['all','전체'],['access','접속 기록'],['xdr','XDR 경보']])add(kind,'option',t).value=v;
-  const status=add(root,'p','저장된 이력 조회 전');status.setAttribute('role','status');
+  const status=add(controls,'p','저장된 이력 조회 전');status.className='filter-count';status.setAttribute('role','status');
+  add(root,'p','조회 시각별로 묶어 최신순으로 표시합니다. 같은 사건이 반복될 수 있어 저장 건수는 고유 사건 수가 아닙니다. 사건 원문은 저장하지 않습니다.').className='feature-note';
   const list=add(root,'ol','');list.className='history-groups';list.setAttribute('aria-label','조회 시각별 저장 이력');
   const management=add(root,'details','');add(management,'summary','이력 관리');
   add(management,'p','최근 30일 · 전체 저장 한도 1,000건. 아래 삭제는 필터와 무관하게 현재 계정·모드의 저장 이력 전체에 적용됩니다.');

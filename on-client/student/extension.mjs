@@ -58,7 +58,7 @@ export function createStudentView({api} = {}) {
       };
       addText('업무 앱에서는 사용할 앱을 선택해 접속 가능 여부와 허용·거부 이유를 확인합니다. 접속 허용은 실제 서비스 연결 완료와 다를 수 있습니다.');
       if (status === 'idle') {
-        addText('앱을 골라 접속을 요청하세요.');
+        addText('위 ‘이용 가능 여부 확인’ 버튼으로 앱을 골라 접속을 요청하세요. 실제 업무 사이트는 열리지 않습니다.');
       } else if (status === 'loading') {
         addText(`업무 앱 ID: ${appId ?? '확인 불가'}`);
         addText('판정 확인 중');
@@ -75,7 +75,8 @@ export function createStudentView({api} = {}) {
           unknown: '판정 확인 불가(unknown)',
         };
         const decision = Object.hasOwn(labels, data?.decision) ? data.decision : 'unknown';
-        addText(labels[decision]);
+        addText(`${mode === 'demo' ? '예제 판정 · ' : ''}${labels[decision]}`);
+        if (mode === 'demo') addText('동작을 설명하기 위한 예제 결과입니다. 실제 서비스의 접속·차단 결과가 아닙니다.');
         if (decision === 'allow') addText('정책상 접근 허용이며, 실제 앱 접속 성공을 보장하지 않습니다.');
         if (decision === 'challenge') addText('이 앱은 추가 인증이나 확인 절차를 대신 수행하지 않습니다.');
         addText(`판정 이유: ${data?.reason ?? '확인 불가'}`);
@@ -119,7 +120,8 @@ export function createStudentView({api} = {}) {
       const events = [...data].sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
       add(root, 'h3', '이번에 받은 보안 기록');
       add(root,'p',`이번 조회 ${events.length}건 · 접속 기록 ${events.filter(e=>e.kind==='access').length}건 · XDR 경보 ${events.filter(e=>e.kind==='xdr').length}건 · 경보 수는 공격 확정 건수가 아닙니다.`);
-      add(root, 'p', '이 목록은 이번 응답만 사건 발생 시각 최신순으로 표시합니다. 이전 조회의 시각·종류·출처는 아래 ‘내가 조회한 이력’에서 확인하세요. 사건 발생 시각은 사건이 일어난 때이며, 조회 시각은 내가 기록을 불러온 때입니다. 저장 이력에는 사건 원문을 보관하지 않습니다.');
+      const help=add(root,'details','');help.className='feature-help';add(help,'summary','현재 기록과 저장 이력의 차이');
+      add(help, 'p', '이 목록은 이번 응답만 사건 발생 시각 최신순으로 표시합니다. 이전 조회의 시각·종류·출처는 아래 ‘내가 조회한 이력’에서 확인하세요. 사건 발생 시각은 사건이 일어난 때이며, 조회 시각은 내가 기록을 불러온 때입니다. 저장 이력에는 사건 원문을 보관하지 않습니다.');
       const kindText = (value) => `${value === 'access' ? '접속 기록' : value === 'xdr' ? 'XDR 경보' : '확인 불가'}(${value})`;
       const appText = (value) => value || '앱을 확인할 수 없습니다';
       const accessLabels = { allowed: '접속 허용', denied: '접속 거부', unknown: '확인 불가' };
@@ -129,10 +131,12 @@ export function createStudentView({api} = {}) {
         { name: '업무 앱', read: (event) => event.appId, text: appText },
         { name: '접속 상태', read: (event) => event.state.access, text: (value) => stateText(accessLabels, value) },
       ];
+      const toolbar=add(root,'div','');toolbar.className='filter-tools';toolbar.setAttribute('role','group');toolbar.setAttribute('aria-label','현재 보안 기록 필터');
+      const mainFilters=add(toolbar,'div','');mainFilters.className='filter-main';
       let extra;
       for (const filter of filters) {
-        if(filter===filters[1]){extra=add(root,'details','');add(extra,'summary','추가 필터 · 업무 앱 / 접속 상태');}
-        const label = add(filter===filters[0]?root:extra, 'label', filter.name); label.className = 'student-filter';
+        if(filter===filters[1]){const detail=add(toolbar,'details','');detail.className='filter-extra';add(detail,'summary','추가 필터 · 업무 앱 / 접속 상태');extra=add(detail,'div','');extra.className='filter-fields';}
+        const label = add(filter===filters[0]?mainFilters:extra, 'label', filter.name); label.className = 'student-filter';
         filter.select = add(label, 'select', '');
         filter.select.setAttribute('aria-label', filter.name);
         add(filter.select, 'option', '전체').value = 'all';
@@ -143,10 +147,10 @@ export function createStudentView({api} = {}) {
         }
         filter.select.addEventListener('change', () => renderList());
       }
-      const count = add(root, 'p', `표시된 기록: ${events.length}건`);
-      count.setAttribute('aria-live', 'polite');
-      const reset = add(root, 'button', '필터 초기화');
+      const reset = add(mainFilters, 'button', '필터 초기화');
       reset.type = 'button'; reset.className = 'btn';
+      const count = add(mainFilters, 'p', `표시된 기록: ${events.length}건`);
+      count.className='filter-count';count.setAttribute('aria-live', 'polite');
       reset.addEventListener('click', () => {
         for (const filter of filters) filter.select.value = 'all';
         renderList();
@@ -568,7 +572,7 @@ function attachDashboard(legacy,api){
     const firstSteps=add(container,'ol','');
     add(firstSteps,'li','처음이라면 ‘내 PC 상태 측정’을 눌러 보세요. 첫 팝업의 시작하기는 이 버튼으로 이동만 하며 자동 측정하지 않습니다.');
     add(firstSteps,'li','보호 현황에서 측정값의 출처·확인 시각·단위를 확인하세요. 읽지 못한 값은 확인 불가로 표시합니다.');
-    add(firstSteps,'li','필요에 따라 업무 앱에서 접속을 요청하거나 보안 기록에서 사건 상세와 이전 조회 이력을 살펴보세요.');
+    add(firstSteps,'li','필요에 따라 업무 앱에서 이용 가능 여부를 확인하거나 보안 기록에서 사건 상세와 이전 조회 이력을 살펴보세요.');
     add(container,'h2','탭별 역할');
     add(container,'p','현재 상태는 보호 현황, 업무 접속은 업무 앱, 사건과 조회 이력은 보안 기록에서 확인하세요.');
     const roles=add(container,'ul','');
@@ -577,14 +581,14 @@ function attachDashboard(legacy,api){
     add(roles,'li','보안 기록에서는 이번 응답과 이전 조회 이력을 확인합니다. 사용 안내에서는 이 설명을 언제든 다시 읽을 수 있습니다.');
     const featureGroups=[
       ['보호 현황 · 세부 기능',[
-        ['PC 측정·추이·이력','PC가 느리거나 저장 공간이 부족한지 궁금할 때, 보호 현황에서 내 PC 상태 측정을 누르세요. CPU는 계산 작업이 얼마나 바쁜지(%), 메모리는 작업용 공간을 얼마나 쓰는지, 디스크는 파일을 저장할 공간이 얼마나 남았는지(GiB)를 보여 줍니다. GiB는 공간 크기를 나타내는 단위입니다. 높은 값 하나만 보고 고장이나 공격이라고 판단하지 마세요. 이후 다시 측정하면 그래프와 항목별 접이식 표로 시각·직전 유효 값 대비 변화를 비교합니다. PC 측정 이력 조회는 저장 기록만 불러오며 새 측정이 아닙니다.'],
-        ['PC 구성·Windows 기록','인터넷 연결 문제나 Windows 오류가 반복되어 담당자에게 상황을 설명하려면, 보호 현황의 PC 구성·기록 조회를 누르세요. 네트워크는 연결 주소 등의 정보, 방화벽은 통신을 허용하거나 막는 규칙의 설정입니다. System은 Windows 시스템, Application은 프로그램이 남긴 기록입니다. 일반 권한으로 네트워크·방화벽 설정과 System·Application의 최근 24시간 경고·오류 건수를 읽습니다. 종류 필터·최신 카드·접이식 표로 비교하고, PC 구성 이력 조회로 과거 결과를 봅니다. 설정을 변경하지 않으며 겹치는 24시간 건수는 합산하지 않습니다.'],
+        ['PC 측정·추이·이력','PC가 느리거나 저장 공간이 부족한지 궁금할 때, 보호 현황에서 내 PC 상태 측정을 누르세요. CPU는 계산 작업이 얼마나 바쁜지(%), 메모리는 작업용 공간을 얼마나 쓰는지, 디스크는 파일을 저장할 공간이 얼마나 남았는지(GiB)를 보여 줍니다. GiB는 공간 크기를 나타내는 단위입니다. 높은 값 하나만 보고 고장이나 공격이라고 판단하지 마세요. 이후 다시 측정하면 그래프와 항목별 접이식 표로 시각·직전 유효 값 대비 변화를 비교합니다. 저장된 PC 측정 보기는 저장 기록만 불러오며 새 측정이 아닙니다.'],
+        ['PC 구성·Windows 기록','인터넷 연결 문제나 Windows 오류가 반복되어 담당자에게 상황을 설명하려면, 보호 현황의 PC 구성·기록 조회를 누르세요. 네트워크는 연결 주소 등의 정보, 방화벽은 통신을 허용하거나 막는 규칙의 설정입니다. System은 Windows 시스템, Application은 프로그램이 남긴 기록입니다. 일반 권한으로 네트워크·방화벽 설정과 System·Application의 최근 24시간 경고·오류 건수를 읽습니다. 종류 필터·최신 카드·접이식 표로 비교하고, 저장된 PC 구성 보기로 과거 결과를 봅니다. 설정을 변경하지 않으며 겹치는 24시간 건수는 합산하지 않습니다.'],
         ['SDP 연결 상태','조직의 업무 서비스에 연결되어 있는지 궁금하면 보호 현황의 SDP 상태 확인을 누르세요. 여기서 SDP는 조직이 사용하는 업무 서비스 연결 방식입니다. 조직 연결이 준비되지 않은 예제 실행에서는 연결 성공을 기대하지 않습니다. 실제 연결 근거가 없으면 미연결 또는 확인 불가로 읽고, PC 조회 성공을 연결 성공으로 해석하지 않습니다.'],
         ['로그인·기기·세션과 재조회','다른 계정이나 기기의 결과를 보고 있지 않은지 확인하려면, 보호 현황의 현재 로그인·내 기기·내 세션을 보세요. 세션은 서버가 관리하는 로그인 상태를 뜻합니다. 내 보안 현황의 대상별 다시 조회는 해당 학생 카드 자료를 갱신합니다. 출처·시각과 접힌 상세를 확인하며 예제 활성 세션을 실제 로그인 증거로 사용하지 않습니다.'],
         ['패키지·취약점','앱을 구성하는 소프트웨어 부품(패키지)에 알려진 보안 약점(취약점)이 있는지 확인할 때 사용합니다. 보호 현황에서 패키지 조회를 누르세요. 담당자가 조회 대상과 정확한 설치 버전 목록(lock 파일), 공개 조회 승인을 준비해야 합니다. 설정 필요가 나오면 담당자에게 대상 준비를 요청하세요. PC 전체 프로그램 검사로 해석하지 말고 패키지별 출처·상태를 확인하세요. 미설정·실패는 취약점 없음이 아닙니다.'],
         ['계정·AI 연결과 도움정보','내 계정의 자료나 AI의 기록 설명을 이용하고 싶을 때 설정합니다. 보호 현황의 계정 연결과 AI 연결 안내에 따라 각각 승인하세요. 조직이나 제공자가 설정을 준비하지 않았다면 담당자에게 확인하세요. 제공된 승인 페이지에서 확인하고 앱으로 돌아와 연결 확인·점검을 누릅니다. 설정과 권한이 준비되어야 하며 계정 연결과 AI 승인은 별도입니다. 문제 원인을 전달하려면 도움정보를 불러와 내용을 확인한 뒤 복사합니다. 자동 전송하지 않습니다.']]],
       ['업무 앱 · 세부 기능',[
-        ['접속 요청과 판정','업무 사이트에 바로 접속했는데 사용할 수 없는 이유가 궁금하거나 조직에서 이 앱으로 접근 상태를 확인하라고 안내했을 때 사용하세요. 업무 앱 탭에서 원하는 앱을 선택하면, 연결된 계정·기기로 이용할 수 있는지와 허용·거부 이유를 한곳에서 확인할 수 있습니다. 이미 직접 접속이 잘 되고 조직의 별도 지침이 없다면 반드시 이 탭을 거칠 필요는 없습니다. 이 앱을 거친다고 항상 더 안전해지거나 자동으로 실제 서비스가 열리는 것은 아닙니다. 허용은 이용 가능 판정, 거부는 제공된 이유를 확인할 상태, 추가 확인은 별도 인증 등의 절차가 필요한 상태입니다. 조회 실패는 거부와 다르므로 연결을 확인한 뒤 다시 요청하세요. 이해하기 어려운 거부 이유는 담당자에게 문의하고 보안 설정을 임의로 바꾸지 마세요. 실제 판정에는 연결과 권한이 필요하며 예제 결과는 연습용입니다.']]],
+        ['접속 요청과 판정','업무 사이트에 바로 접속했는데 사용할 수 없는 이유가 궁금하거나 조직에서 이 앱으로 접근 상태를 확인하라고 안내했을 때 사용하세요. 업무 앱 탭에서 원하는 앱의 이용 가능 여부 확인 버튼을 누르면, 연결된 계정·기기로 이용할 수 있는지와 허용·거부 이유를 한곳에서 확인할 수 있습니다. 이미 직접 접속이 잘 되고 조직의 별도 지침이 없다면 반드시 이 탭을 거칠 필요는 없습니다. 이 앱을 거친다고 항상 더 안전해지거나 자동으로 실제 서비스가 열리는 것은 아닙니다. 허용은 이용 가능 판정, 거부는 제공된 이유를 확인할 상태, 추가 확인은 별도 인증 등의 절차가 필요한 상태입니다. 조회 실패는 거부와 다르므로 연결을 확인한 뒤 다시 요청하세요. 이해하기 어려운 거부 이유는 담당자에게 문의하고 보안 설정을 임의로 바꾸지 마세요. 실제 판정에는 연결과 권한이 필요하며 예제 결과는 연습용입니다.']]],
       ['보안 기록 · 세부 기능',[
         ['사건 상세와 필터','접속이 막힌 이유나 경보에 적힌 내용을 확인하려면, 보안 기록의 이번에 받은 보안 기록에서 종류를 고르고 해당 기록 아래 상세를 펼치세요. XDR 경보는 연결된 보안 시스템에서 받은 알림이며 공격이 확정되었다는 뜻은 아닙니다. 사건 발생 시각순으로 근거·상태를 확인하며, 추가 필터로 업무 앱·접속 상태를 좁힙니다. 기록 건수는 공격 확정 건수가 아닙니다.'],
         ['내가 조회한 이력','사용자가 이전에 언제 어떤 기록을 조회했는지 확인할 때, 보안 기록의 내가 조회한 이력에서 최신순 조회 시각 묶음을 펼칩니다. 이력 다시 불러오기와 종류 필터로 발생 시각·종류·출처를 확인합니다. 같은 사건이 여러 조회에 반복될 수 있고 원문은 저장하지 않습니다. 삭제가 필요할 때만 이력 관리에서 범위를 읽고 확인 후 삭제하며, 필터와 무관하게 현재 계정·모드 전체 이력에 적용됩니다.'],
@@ -662,7 +666,7 @@ function attachDashboard(legacy,api){
     const advice=add(section,'p','');
     const targetLabel=config.buttonLabel||config.title;
     const button=add(section,'button',`${targetLabel} 다시 조회`);button.type='button';button.setAttribute('aria-label',`${targetLabel} 다시 조회`);
-    Object.assign(button.style,{padding:'8px 14px',border:'1px solid currentColor',borderRadius:'6px',background:'transparent',color:'inherit',font:'inherit',cursor:'pointer'});
+    button.className='btn';
     const details=add(section,'details','');details.style.marginTop='12px';details.open=false;add(details,'summary',config.detail);
     const body=add(details,'div','');
     const panel={...config,section,button,status,provenance,checked,advice,details,body,generation:0,busy:false,signature:null};panels.set(config.key,panel);
