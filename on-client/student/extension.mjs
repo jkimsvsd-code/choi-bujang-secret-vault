@@ -31,7 +31,7 @@ export function createStudentView({api} = {}) {
         }
         root.appendChild(section);
       };
-      renderResource('현재 로그인 정보', me, (section, data) => {
+      renderResource('업무 서비스 로그인 정보', me, (section, data) => {
         addText(section, 'p', `사용자: ${data.user.label} · 사용자 ID: ${data.user.id}`);
         addText(section, 'p', `현재 기기: ${deviceText(data.device)}`);
         addText(section, 'p', `현재 세션: ${sessionText(data.session)}`);
@@ -217,7 +217,7 @@ export function createStudentView({api} = {}) {
       };
       const label = (labels, value) => Object.hasOwn(labels, value) ? labels[value] : '확인 불가';
       const modes = { connected: '연결됨', disconnected: '연결 없음', demo: '예제 자료', unknown: '확인 불가' };
-      add('p', `연결 상태: ${label(modes, mode)} (${mode ?? 'unknown'})`, mode === 'demo' ? 'state state-warning' : 'state state-empty');
+      add('p', `업무 서비스 자료 연결: ${label(modes, mode)} (${mode ?? 'unknown'}) · 앱 계정·AI 상태와 별개입니다.`, mode === 'demo' ? 'state state-warning' : 'state state-empty');
       const failure = (title, resource, retry) => {
         add('p', `${title} 불러오기 실패: ${resource.error?.code ?? 'unknown'} · ${resource.error?.message ?? '확인 불가'}`, 'state state-error');
         if (/TIMEOUT|TIMED_OUT/i.test(resource.error?.code ?? '')) add('p', '요청 시간이 초과되었습니다.', 'ui-help');
@@ -394,7 +394,7 @@ export function createStudentView({api} = {}) {
         add(`AI 연결 점검 실패: ${error.code} · ${error.message}`, 'state state-error');
         const guidance = {
           ON_AI_PROVISIONING_PENDING: '이 앱의 이용 권한을 준비 중입니다. 담당자에게 계정 연결과 앱 권한 확인을 요청하세요.',
-          SUBJECT_SCOPE_UNVERIFIED: '계정 연결을 확인할 수 없습니다. 담당자에게 계정 연결과 앱 권한 확인을 요청하세요.',
+          SUBJECT_SCOPE_UNVERIFIED: '업무 서비스의 본인 사건·프로젝트 조회 범위를 확인할 수 없습니다. 담당자에게 SDP 세션과 사건의 계정 대응 확인을 요청하세요.',
           ON_AI_AUTHORIZATION_CHANGED: '점검 중 권한이 변경되었습니다. 담당자에게 현재 앱 권한 확인을 요청하세요.',
           WB_CLCO_AUTH_REQUIRED: '인증 실패입니다. 계정 연결을 다시 확인하고 담당자에게 문의하세요.',
           WB_CLCO_ACCESS_BLOCKED: '접근이 제한되었습니다. 계정 연결을 다시 확인하고 담당자에게 앱 권한 확인을 요청하세요.',
@@ -567,6 +567,11 @@ export function createStudentView({api} = {}) {
 // Only the provided student GET capability is used. No common DOM, CSS or PC APIs.
 function attachDashboard(legacy,api){
   const demo=api?.displayMode==='demo';
+  const failureAdvice=r=>{
+    if(['ENGINE_NOT_CONNECTED','REAL_SOURCE_UNAVAILABLE'].includes(r?.error?.code))return '업무 서비스(SDP) 연결이 준비되지 않았습니다. 담당자에게 SDP 설정과 서비스 준비 상태를 확인한 뒤 다시 조회하세요. 앱 계정 로그인·AI 승인을 다시 진행할 필요는 없습니다.';
+    if(r?.error?.code==='SUBJECT_SCOPE_UNVERIFIED')return '업무 서비스의 사용자·프로젝트 조회 범위를 확인할 수 없습니다. 담당자에게 SDP 세션과 본인 기록의 연결을 확인한 뒤 다시 조회하세요. 앱 계정 로그인과 별개입니다.';
+    return '앱 서버와 해당 조회 서비스의 응답을 확인한 뒤 다시 조회하세요. 계속 실패하면 도움정보의 오류 코드를 담당자에게 전달하세요.';
+  };
   const add=(parent,tag,text,className='')=>{const node=document.createElement(tag);node.className=className||(tag==='p'?'ui-body':'');node.textContent=text;parent.appendChild(node);return node;};
   const stamp=v=>Number.isFinite(Date.parse(v))?new Date(v).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',hour12:false})+' KST':'제공되지 않음';
   const source=r=>r?.mode==='demo'?'예제 자료 · 설명용이며 실제 PC 조회값이 아닙니다.':r?.mode==='connected'?'연결 원천 자료 · PC 실측 및 터널 연결 성공과 별개입니다.':'출처 확인 불가 · 연결 상태를 확인하세요.';
@@ -610,9 +615,9 @@ function attachDashboard(legacy,api){
         ['PC 측정·추이·이력','PC가 느리거나 저장 공간이 부족한지 궁금할 때, 보호 현황에서 내 PC 상태 측정을 누르세요. CPU는 계산 작업이 얼마나 바쁜지(%), 메모리는 작업용 공간을 얼마나 쓰는지, 디스크는 파일을 저장할 공간이 얼마나 남았는지(GiB)를 보여 줍니다. GiB는 공간 크기를 나타내는 단위입니다. 높은 값 하나만 보고 고장이나 공격이라고 판단하지 마세요. 이후 다시 측정하면 그래프와 항목별 접이식 표로 시각·직전 유효 값 대비 변화를 비교합니다. 저장된 PC 측정 보기는 저장 기록만 불러오며 새 측정이 아닙니다.'],
         ['PC 구성·Windows 기록','인터넷 연결 문제나 Windows 오류가 반복되어 담당자에게 상황을 설명하려면, 보호 현황의 PC 구성·기록 조회를 누르세요. 네트워크는 연결 주소 등의 정보, 방화벽은 통신을 허용하거나 막는 규칙의 설정입니다. System은 Windows 시스템, Application은 프로그램이 남긴 기록입니다. 일반 권한으로 네트워크·방화벽 설정과 System·Application의 최근 24시간 경고·오류 건수를 읽습니다. 종류 필터·최신 카드·접이식 표로 비교하고, 저장된 PC 구성 보기로 과거 결과를 봅니다. 설정을 변경하지 않으며 겹치는 24시간 건수는 합산하지 않습니다.'],
         ['SDP 연결 상태','조직의 업무 서비스에 연결되어 있는지 궁금하면 보호 현황의 SDP 상태 확인을 누르세요. 여기서 SDP는 조직이 사용하는 업무 서비스 연결 방식입니다. 조직 연결이 준비되어야 상태를 확인할 수 있습니다. 실제 연결 근거가 없으면 미연결 또는 확인 불가로 읽고, PC 조회 성공을 연결 성공으로 해석하지 않습니다.'],
-        ['로그인·기기·세션과 재조회','다른 계정이나 기기의 결과를 보고 있지 않은지 확인하려면, 보호 현황의 현재 로그인·내 기기·내 세션을 보세요. 세션은 서버가 관리하는 로그인 상태를 뜻합니다. 내 보안 현황의 대상별 다시 조회는 해당 카드 자료를 갱신합니다. 출처·확인 시각과 접힌 상세를 확인하고, 이전 결과를 현재 로그인 상태로 해석하지 않습니다.'],
+        ['업무 서비스 로그인·기기·세션과 재조회','업무 서비스가 어떤 계정과 기기를 확인했는지 보려면 업무 서비스 로그인·내 기기·내 세션을 보세요. 세션은 서버가 관리하는 로그인 상태를 뜻합니다. 앱 계정 로그인과 별개이며 SDP 연결이 필요합니다. 내 보안 현황의 대상별 다시 조회는 해당 자료를 갱신합니다. 출처와 확인 시각을 함께 보고, 이전 결과를 현재 상태로 해석하지 마세요.'],
         ['패키지·취약점','앱을 구성하는 소프트웨어 부품(패키지)에 알려진 보안 약점(취약점)이 있는지 확인할 때 사용합니다. 보호 현황에서 패키지 조회를 누르세요. 담당자가 조회 대상과 정확한 설치 버전 목록, 공개 조회 승인을 준비해야 합니다. 설정 필요가 나오면 담당자에게 대상 준비를 요청하세요. PC 전체 프로그램 검사로 해석하지 말고 패키지별 출처·상태를 확인하세요. 미설정·실패는 취약점 없음이 아닙니다.'],
-        ['계정·AI 연결과 도움정보','내 계정의 자료나 AI의 기록 설명을 이용하고 싶을 때 설정합니다. 보호 현황의 계정 연결과 AI 연결 안내에 따라 각각 승인하세요. 조직이나 제공자가 설정을 준비하지 않았다면 담당자에게 확인하세요. 제공된 승인 페이지에서 확인하고 앱으로 돌아와 연결 확인·점검을 누릅니다. 설정과 권한이 준비되어야 하며 계정 연결과 AI 승인은 별도입니다. 문제 원인을 전달하려면 도움정보를 불러와 내용을 확인한 뒤 복사합니다. 자동 전송하지 않습니다.']]],
+        ['계정·AI 연결과 도움정보','앱 계정, AI 이용 권한, 업무 서비스(SDP)는 각각 확인합니다. 이미 로그인·승인했다면 「앱 계정 확인」과 「AI 이용 가능 여부 확인」을 누르세요. 완료된 연결을 반복할 필요는 없습니다. AI 점검은 이용 권한과 모델 목록 확인이며 답변 생성은 아닙니다. 업무 앱·등록 기기·세션·보안 기록 조회에는 담당자가 준비한 SDP 설정이 필요합니다. 사건 AI 설명에는 본인 기록과 AI 계정의 대응 확인도 필요합니다. 도움정보는 내용을 확인한 뒤 직접 복사하며 자동 전송하지 않습니다.']]],
       ['업무 앱 · 세부 기능',[
         ['접속 요청과 판정','업무 사이트에 바로 접속했는데 사용할 수 없는 이유가 궁금하거나 조직에서 이 앱으로 접근 상태를 확인하라고 안내했을 때 사용하세요. 업무 앱 탭에서 원하는 앱의 이용 가능 여부 확인 버튼을 누르면, 연결된 계정·기기로 이용할 수 있는지와 허용·거부 이유를 한곳에서 확인할 수 있습니다. 이미 직접 접속이 잘 되고 조직의 별도 지침이 없다면 반드시 이 탭을 거칠 필요는 없습니다. 이 앱을 거친다고 항상 더 안전해지거나 자동으로 실제 서비스가 열리는 것은 아닙니다. 허용은 이용 가능 판정, 거부는 제공된 이유를 확인할 상태, 추가 확인은 별도 인증 등의 절차가 필요한 상태입니다. 조회 실패는 거부와 다르므로 연결을 확인한 뒤 다시 요청하세요. 이해하기 어려운 거부 이유는 담당자에게 문의하고 보안 설정을 임의로 바꾸지 마세요. 판정에는 조직 연결과 권한이 필요합니다.']]],
       ['보안 기록 · 세부 기능',[
@@ -676,7 +681,7 @@ function attachDashboard(legacy,api){
   guide.addEventListener('cancel',event=>{event.preventDefault();closeGuide();});
   const showFirstGuide=()=>{if(api?.showOnboarding!==false&&!autoAttempted&&root.isConnected){autoAttempted=true;if(!readPreference())openGuide();}};
   const configs=[
-    {key:'identity',title:'기기·세션',detail:'기기·세션 상세',paths:['/api/me','/api/devices','/api/sessions'],labels:['로그인','기기','세션']},
+    {key:'identity',title:'기기·세션',detail:'기기·세션 상세',paths:['/api/me','/api/devices','/api/sessions'],labels:['업무 서비스 로그인','기기','세션']},
     {key:'events',title:'보안 기록',detail:'기록 보기',paths:['/api/events'],labels:['보안 기록']},
     {key:'vulnerabilities',title:'패키지·취약점',buttonLabel:'패키지',detail:'패키지별 결과',paths:['/api/vulnerabilities'],labels:['설치 패키지·취약점']},
   ];
@@ -717,7 +722,7 @@ function attachDashboard(legacy,api){
       const label=panel.labels[index];add(panel.body,'h5',label);add(panel.body,'p',panel.key==='vulnerabilities'?'패키지별 조회 상태·출처·확인 시각을 아래에서 확인하세요.':source(r),'ui-meta');
       if(r?.status==='loading'){waiting++;add(panel.body,'p',`${label} 대기 중`,'state state-loading');continue;}
       if(r?.status!=='ok'){
-        if(r?.status==='error'){failures++;problems.push(label+' 조회 실패');add(panel.body,'p',`${label} 조회 실패 · 결과 확인 불가. 다음: 로컬 앱 실행·계정 연결을 확인한 뒤 다시 조회하세요. 계속 실패하면 보호 현황의 도움정보를 확인한 뒤 담당자에게 문의하세요.`,'state state-error');}
+        if(r?.status==='error'){failures++;problems.push(label+' 조회 실패');add(panel.body,'p',`${label} 조회 실패 · 결과 확인 불가. 다음: ${failureAdvice(r)}`,'state state-error');}
         else add(panel.body,'p',`${label} 조회 전 · 다시 조회를 누르세요.`,'state state-empty');
         continue;
       }
@@ -767,7 +772,7 @@ function attachDashboard(legacy,api){
       [...new Set(resources.map(r=>source(r)))].join(' / ');
     const times=resources.map((r,i)=>`${panel.labels[i]} ${stamp(r?.checkedAt||r?.data?.checkedAt)}`);
     panel.checked.textContent='원천 확인 시각: '+times.join(' / ')+(queried?' · 화면 수신: '+stamp(new Date().toISOString()):'');
-    panel.advice.textContent=failures?problems.join(' · ')+(panel.key==='vulnerabilities'?' — 담당자에게 조회 대상·설치 버전 목록과 공개 조회 승인 상태 확인을 요청한 뒤 다시 조회하세요.':' — 로컬 앱 실행·계정 연결을 확인한 뒤 다시 조회하세요. 계속 실패하면 보호 현황의 도움정보를 확인한 뒤 담당자에게 문의하세요.'):
+    panel.advice.textContent=failures?problems.join(' · ')+' — '+(panel.key==='vulnerabilities'?'담당자에게 조회 대상·설치 버전 목록과 공개 조회 승인 상태 확인을 요청한 뒤 다시 조회하세요.':[...new Set(resources.filter(r=>r.status==='error').map(failureAdvice))].join(' ')||failureAdvice(null)):
       panel.key==='identity'?'세션 활성은 PC가 안전하다는 판정이 아닙니다.':panel.key==='vulnerabilities'?'미조회·실패는 취약점 없음이 아닙니다.':'발생 시각순으로 표시합니다. 상세에서 종류를 선택할 수 있습니다.';
 
   }
@@ -780,7 +785,7 @@ function attachDashboard(legacy,api){
   legacy.renderIdentity=function(input){
     sync('identity',[input.me,input.devices,input.sessions]);
     const container=document.createElement('div');container.appendChild(root);
-    const details=add(container,'details','');add(details,'summary','기존 로그인·기기·세션 상세');details.appendChild(originalIdentity(input));queueMicrotask(showFirstGuide);return container;
+    const details=add(container,'details','');add(details,'summary','업무 서비스 로그인·기기·세션 상세');details.appendChild(originalIdentity(input));queueMicrotask(showFirstGuide);return container;
   };
   legacy.renderEvents=function(input){sync('events',[input]);return originalEvents(input);};
   legacy.renderVulnerabilities=function(input){sync('vulnerabilities',[input]);return originalVulns(input);};

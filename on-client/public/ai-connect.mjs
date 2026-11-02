@@ -41,13 +41,13 @@ export const CONNECT_MESSAGES = Object.freeze({
   ALEKOV_CONNECT_OUTCOME_UNKNOWN: '연결 결과를 확인할 수 없습니다. 자동으로 다시 시도하지 않습니다. 담당자에게 확인을 요청하세요.',
 });
 const PHASE_MESSAGES = Object.freeze({
-  idle: '아직 연결을 시작하지 않았습니다. 주소·열쇠를 직접 입력하지 않습니다.',
+  idle: '이 화면에서 AI 승인을 아직 확인하지 않았습니다. 이미 승인했다면 「AI 이용 가능 여부 확인」을 누르세요.',
   starting: '연결 요청을 만드는 중…',
   awaiting_approval: '아래 확인 번호를 기억한 뒤 「승인 페이지 열기」를 눌러 Workbench 로그인 승인 화면에서 같은 번호를 확인하고 승인하세요(처음이면 이 PC 프로젝트 등록도 그 화면에서 함께 확인합니다). 승인한 뒤 「승인했으며 연결 확인」을 누르세요.',
   finishing: '연결 확인을 요청하는 중…',
   checking: '승인 결과와 연결 정보 저장을 확인하는 중입니다. 승인 화면에서 아직 승인하지 않았다면 지금 승인하세요.',
   cancelling: '연결을 취소하는 중…',
-  connected: '연결이 완료됐습니다. 이제 「현재 API 연결 점검」으로 현재 로그인의 모델 응답을 확인하세요. 이 표시는 17단계 연결 절차이며 통과·점수 판정이 아닙니다.',
+  connected: 'AI 사용 승인이 확인됐습니다. 승인을 다시 진행할 필요는 없습니다. 「AI 이용 가능 여부 확인」에서 이용 권한과 모델 목록을 확인할 수 있습니다.',
   error: '연결하지 못했습니다.',
   unknown: '연결 결과를 확인할 수 없습니다(확인 불가). 연결 완료로 보지 않습니다.',
   cancelled: '연결을 취소했습니다.',
@@ -140,7 +140,7 @@ export function createAiConnectController({ transport = createFetchTransport(), 
       return set({ phase: 'unknown', reason: 'ALEKOV_CONNECT_RESPONSE_INVALID', cancelUnconfirmed: pendingCancel });
     }
     // 서버가 unknown 으로 남긴 결과는 취소 완료 확인이 아니다. unknown 이 아닌 검증된 상태만 미확인 표식을 지운다.
-    set({ phase: data.state, reason: data.reason, cancelUnconfirmed: data.state === 'unknown' ? pendingCancel : false });
+    set({ phase: data.state, reason: data.reason, checkedAt: new Date(clock()).toISOString(), cancelUnconfirmed: data.state === 'unknown' ? pendingCancel : false });
     if (data.state === 'checking') schedulePoll(g); else stopPoll();
   }
   function schedulePoll(g) {
@@ -309,27 +309,27 @@ export const NATIVE_MESSAGES = Object.freeze({
   NATIVE_LOGIN_INPUT_INVALID: '요청 형식이 올바르지 않습니다. 화면을 다시 불러온 뒤 직접 다시 누르세요.',
   NATIVE_LOGIN_PENDING: '포털에서 번호 확인이 아직 끝나지 않았습니다. 포털에서 같은 번호를 확인한 뒤 「로그인 확인 완료」를 다시 누르세요.',
   NATIVE_LOGIN_STATUS_ONLY: '저장된 공개 상태만 읽었습니다. 포털에서 번호를 확인한 뒤 「로그인 확인 완료」를 눌러야 연결됩니다.',
-  NATIVE_LOGIN_SERVER_UNKNOWN: '서버가 결과를 확인하지 못했습니다. 「현재 로그인 확인」이나 「계정 연결 취소」를 직접 누르세요.',
-  NATIVE_LOGIN_SERVER_STARTING: '다른 연결 시작이 진행 중으로 보입니다. 잠시 뒤 「현재 로그인 확인」을 누르거나 「계정 연결 취소」를 누르세요.',
+  NATIVE_LOGIN_SERVER_UNKNOWN: '서버가 결과를 확인하지 못했습니다. 「앱 계정 확인」이나 「계정 연결 취소」를 직접 누르세요.',
+  NATIVE_LOGIN_SERVER_STARTING: '다른 연결 시작이 진행 중으로 보입니다. 잠시 뒤 「앱 계정 확인」을 누르거나 「계정 연결 취소」를 누르세요.',
   NATIVE_LOGIN_EXPIRED_LOCAL: '표시된 기한이 지나 화면의 연결·확인 번호 표시를 지웠습니다. 서버에 다시 묻지 않았습니다.',
   NATIVE_LOGIN_TICKET_EXPIRED: '서버가 이 연결 요청의 만료를 확인했습니다. 취소 성공을 뜻하지 않으며, 새 연결을 시작할 수 있습니다.',
-  NATIVE_LOGIN_LOCAL_RESET: '이 화면의 진행과 요청만 멈췄습니다. 서버의 계정 연결이 취소됐다고 보지 않습니다. 「현재 로그인 확인」이나 「계정 연결 취소」로 확인하세요.',
+  NATIVE_LOGIN_LOCAL_RESET: '이 화면의 진행과 요청만 멈췄습니다. 서버의 계정 연결이 취소됐다고 보지 않습니다. 「앱 계정 확인」이나 「계정 연결 취소」로 확인하세요.',
 });
 const NATIVE_PHASE_MESSAGES = Object.freeze({
-  idle: '아직 계정 연결을 확인하지 않았습니다. 이 화면을 열어도 서버에 자동으로 묻지 않습니다.',
+  idle: '이 화면에서 앱 계정을 아직 확인하지 않았습니다. 이미 로그인했다면 「앱 계정 확인」을 누르세요. 새 로그인을 시작할 필요는 없습니다.',
   starting: '계정 연결 요청을 만드는 중…',
   awaiting_approval: '「계정 확인 페이지 열기」로 포털을 열고, 아래 6자리 확인 번호를 포털에 입력해 확인하세요. 포털에서 확인한 뒤 이 화면에서 「로그인 확인 완료」를 누르세요.',
   redeeming: '로그인 확인 결과를 받는 중…',
   checking: '현재 로그인을 확인하는 중…',
   cancelling: '계정 연결 취소를 요청하는 중…',
-  connected: '계정 연결 확인 완료, AI 앱 승인은 별도입니다. 이 표시는 AI 이용 권한·프로젝트 등록·실제 엔진·단계 성취를 뜻하지 않습니다. AI 앱 승인은 「AI 연결 시작」을 따로 눌러 진행하세요.',
+  connected: '앱 계정 로그인이 확인됐습니다. 다시 로그인할 필요는 없습니다. AI 이용 권한과 업무 서비스 연결은 각각의 확인 결과를 보세요.',
   disconnected: '서버에 확인된 계정 연결이 없습니다.',
   cancelled: '서버가 계정 연결 취소를 확인했습니다.',
-  expired: '표시 기한이 지났습니다. 「현재 로그인 확인」으로 다시 확인하거나 「계정 연결 취소」 뒤 새로 시작하세요.',
-  unknown: '계정 연결 결과를 확인할 수 없습니다(확인 불가). 연결로 보지 않습니다. 「현재 로그인 확인」이나 「계정 연결 취소」를 직접 누르세요.',
+  expired: '표시 기한이 지났습니다. 「앱 계정 확인」으로 다시 확인하거나 「계정 연결 취소」 뒤 새로 시작하세요.',
+  unknown: '계정 연결 결과를 확인할 수 없습니다(확인 불가). 연결로 보지 않습니다. 「앱 계정 확인」이나 「계정 연결 취소」를 직접 누르세요.',
   error: '계정 연결을 시작하지 못했습니다.',
 });
-export const NATIVE_CANCEL_UNCONFIRMED_MESSAGE = '취소 요청의 결과를 확인하지 못했습니다(확인 불가). 취소된 것으로 보지 않습니다. 「현재 로그인 확인」으로 서버 상태를 확인하거나 「계정 연결 취소」를 다시 누르세요.';
+export const NATIVE_CANCEL_UNCONFIRMED_MESSAGE = '취소 요청의 결과를 확인하지 못했습니다(확인 불가). 취소된 것으로 보지 않습니다. 「앱 계정 확인」으로 서버 상태를 확인하거나 「계정 연결 취소」를 다시 누르세요.';
 
 const nfail = (code) => Object.freeze({ ok: false, error: Object.freeze({ code }) });
 const nativeReason = (code) => (typeof code === 'string' && Object.hasOwn(NATIVE_MESSAGES, code) ? code : 'NATIVE_LOGIN_UNVERIFIED');
@@ -508,7 +508,7 @@ export function createNativeLoginController({ transport = createNativeFetchTrans
     const phase = data.state === 'unknown' || data.state === 'starting' ? 'unknown' : data.state;
     const reason = data.state === 'unknown' ? 'NATIVE_LOGIN_SERVER_UNKNOWN' : data.state === 'starting' ? 'NATIVE_LOGIN_SERVER_STARTING'
       : data.state === 'expired' ? 'NATIVE_LOGIN_TICKET_EXPIRED' : null;
-    set({ phase, expiresAtMs: data.expiresAtMs, approvalUrl: data.approvalUrl, confirmation: data.confirmation, reason,
+    set({ phase, checkedAt: new Date(now()).toISOString(), expiresAtMs: data.expiresAtMs, approvalUrl: data.approvalUrl, confirmation: data.confirmation, reason,
       cancelUnconfirmed: false, expiredFrom: data.state === 'expired' ? 'pending-ticket' : null, ...extra });
     scheduleExpiry(g);
   }
@@ -580,7 +580,7 @@ export function createNativeLoginController({ transport = createNativeFetchTrans
     } finally { end(ctx); }
   }
 
-  // 「현재 로그인 확인」: 이미 connected 면 current, 아니면 status 를 한 번 읽는다.
+  // 「앱 계정 확인」: 이미 connected 면 current, 아니면 status 를 한 번 읽는다.
   // status 는 저장된 공개 상태일 뿐이다. connected 로 보이면 같은 기한 안에서 current 로 다시 확인한다.
   async function check() {
     if (NATIVE_BUSY.includes(state.phase)) return state;
@@ -671,14 +671,15 @@ export function nativeLoginView(state, now = Date.now()) {
   if (phase === 'awaiting_approval' && !awaiting) { phase = 'unknown'; reason = 'NATIVE_LOGIN_RESPONSE_INVALID'; }
   const busy = NATIVE_BUSY.includes(phase);
   const cancelUnconfirmed = phase === 'unknown' && s.cancelUnconfirmed === true;
+  const localReset = phase === 'unknown' && reason === 'NATIVE_LOGIN_LOCAL_RESET' && !cancelUnconfirmed;
   const ticketExpired = phase === 'expired' && from === 'pending-ticket';
-  const base = cancelUnconfirmed ? NATIVE_CANCEL_UNCONFIRMED_MESSAGE : ticketExpired ? NATIVE_MESSAGES.NATIVE_LOGIN_TICKET_EXPIRED : NATIVE_PHASE_MESSAGES[phase];
-  const detail = reason && !ticketExpired && !(cancelUnconfirmed && reason === 'NATIVE_LOGIN_CANCELLED') ? NATIVE_MESSAGES[reason] : '';
+  const base = localReset ? '이 화면의 확인 결과를 초기화했습니다. 서버의 로그인을 취소한 것은 아닙니다. 「앱 계정 확인」으로 기존 연결을 확인하세요.' : cancelUnconfirmed ? NATIVE_CANCEL_UNCONFIRMED_MESSAGE : ticketExpired ? NATIVE_MESSAGES.NATIVE_LOGIN_TICKET_EXPIRED : NATIVE_PHASE_MESSAGES[phase];
+  const detail = reason && !localReset && !ticketExpired && !(cancelUnconfirmed && reason === 'NATIVE_LOGIN_CANCELLED') ? NATIVE_MESSAGES[reason] : '';
   return Object.freeze({
     phase,
     reason,
     busy,
-    kind: phase === 'connected' ? 'ok' : ['unknown', 'error'].includes(phase) ? 'error' : ['idle', 'disconnected', 'cancelled', 'expired'].includes(phase) ? 'empty' : 'loading',
+    kind: localReset ? 'empty' : phase === 'connected' ? 'ok' : ['unknown', 'error'].includes(phase) ? 'error' : ['idle', 'disconnected', 'cancelled', 'expired'].includes(phase) ? 'empty' : 'loading',
     message: phase === 'connected' ? base : [base, detail].filter(Boolean).join(' '),
     approvalUrl: awaiting ? s.approvalUrl : null,
     confirmation: awaiting ? s.confirmation : null,
@@ -688,4 +689,38 @@ export function nativeLoginView(state, now = Date.now()) {
     canCheck: !busy,
     canCancel: nativeCanCancel(phase, from),
   });
+}
+
+// UI projection only. The three sources never grant authority to one another.
+// checkedAt is a response/receipt time, never an approval expiry or render time.
+export function connectionSummary({ nativeState = {phase:'idle'}, approvalState = {phase:'idle'}, aiCheck = {status:'idle'}, service = {status:'idle'}, demo = false, now = Date.now() } = {}) {
+  const item = (label, text, tone, detail, checkedAt = null) => ({label,text,tone,detail,checkedAt:iso(checkedAt)?checkedAt:null});
+  if (demo) return ['앱 계정','AI','업무 서비스'].map(label=>item(label,'예제','demo','설명용 예제 · 실제 연결 상태가 아닙니다.'));
+  const native = nativeLoginView(nativeState, now);
+  const unchecked = native.phase==='idle' || (native.reason==='NATIVE_LOGIN_LOCAL_RESET' && !nativeState.cancelUnconfirmed);
+  const account = native.phase === 'connected'
+    ? item('앱 계정','확인됨','ok','앱 계정 로그인 확인 · 업무 서비스 로그인과 별개입니다.',nativeState.checkedAt)
+    : item('앱 계정',native.busy?'확인 중':unchecked?'미확인':native.phase==='expired'?'확인 기한 지남':['disconnected','cancelled'].includes(native.phase)?'미연결':'확인 불가',
+      native.busy?'loading':unchecked?'empty':['unknown','error'].includes(native.phase)?'error':'empty',
+      unchecked?'이미 로그인했다면 계정·AI 연결의 「앱 계정 확인」을 누르세요.':native.message);
+  const approvalKnown = approvalState.phase === 'connected' && !approvalState.cancelUnconfirmed;
+  const verified = aiCheck.status==='ok' && aiCheck.meta?.mode!=='demo' && aiCheck.data?.transportChecked===true
+    && aiCheck.data?.audienceAuthorization==='verified' && Number.isInteger(aiCheck.data?.modelCount) && aiCheck.data.modelCount>0 && iso(aiCheck.meta?.checkedAt);
+  let ai;
+  if (['starting','finishing','checking','cancelling','awaiting_approval'].includes(approvalState.phase)) ai=item('AI',approvalState.phase==='awaiting_approval'?'승인 대기':'승인 확인 중','loading',connectMessage(approvalState));
+  else if (aiCheck.status==='loading') ai=item('AI','이용 확인 중','loading',approvalKnown?'사용 승인 완료 · 이용 권한과 모델 목록 확인 중입니다.':'기존 승인과 이용 권한을 확인 중입니다.');
+  else if (verified) ai=item('AI','이용 권한 확인됨','ok',`승인 확인 · 사용 가능한 모델 ${aiCheck.data.modelCount}개. 답변 생성 성공을 뜻하지 않습니다.`,aiCheck.meta.checkedAt);
+  else if (aiCheck.status==='error') ai=item('AI','이용 확인 불가','error',`${approvalKnown?'사용 승인 완료. ':''}점검 결과의 이유를 확인하세요. 이 실패만으로 승인이 취소됐다고 판단하지 않습니다.`,aiCheck.meta?.checkedAt);
+  else if (aiCheck.status==='ok') ai=item('AI','실제 이용 권한 미확인','empty','시험 응답 또는 검증되지 않은 모델 결과를 실제 이용 가능으로 표시하지 않습니다.');
+  else if (approvalKnown) ai=item('AI','승인 완료 · 점검 전','empty','승인을 반복할 필요는 없습니다. 「AI 이용 가능 여부 확인」으로 모델 목록을 확인하세요.',approvalState.checkedAt);
+  else ai=item('AI',['starting','finishing','checking','cancelling'].includes(approvalState.phase)?'승인 확인 중':approvalState.phase==='awaiting_approval'?'승인 대기':approvalState.phase==='idle'?'미확인':'승인 확인 불가',
+    ['error','unknown'].includes(approvalState.phase)?'error':'empty',approvalState.phase==='idle'?'이미 승인했다면 「AI 이용 가능 여부 확인」을 누르세요.':connectMessage(approvalState));
+  let work;
+  if (service.status==='loading') work=item('업무 서비스','조회 중','loading','업무 서비스의 로그인 정보를 확인 중입니다.');
+  else if (service.status==='ok' && service.meta?.mode==='connected' && service.data?.session?.status==='active')
+    work=item('업무 서비스','자료 조회 확인됨','ok','업무 서비스 로그인 자료를 받았습니다. 업무 앱 접속·터널 연결 성공은 별도로 확인하세요.',service.meta.checkedAt);
+  else if (service.status==='error' && service.meta?.mode==='disconnected' && ['ENGINE_NOT_CONNECTED','REAL_SOURCE_UNAVAILABLE','SUBJECT_SCOPE_UNVERIFIED'].includes(service.error?.code))
+    work=item('업무 서비스','미연결','empty','업무 앱·등록 기기·세션·보안 기록 조회에 필요한 연결입니다. 담당자에게 SDP 설정과 서비스 준비 상태를 확인하세요. 앱 계정 로그인·AI 승인과 별개입니다.',service.meta.checkedAt);
+  else work=item('업무 서비스',service.status==='idle'?'미확인':'확인 불가',service.status==='error'?'error':'empty','SDP 연결 상태에서 원인을 확인하세요. 다른 연결의 성공으로 업무 서비스 연결을 판단하지 않습니다.',service.meta?.checkedAt);
+  return [account,ai,work];
 }

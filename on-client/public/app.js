@@ -47,7 +47,7 @@ const KIND_LABELS ={ access: '접속 기록', xdr: 'XDR 사건' };
 const STUDENT_GET_PATHS = ['/api/me', '/api/apps', '/api/events', '/api/devices', '/api/sessions', '/api/vulnerabilities'];
 
 const RESOURCE_LABELS = {
-  me: '로그인 정보',
+  me: '업무 서비스 로그인',
   apps: '업무 앱',
   events: '보안 기록',
   devices: '기기',
@@ -193,7 +193,7 @@ const AI_MESSAGES = Object.freeze({
 });
 function safeAiFailure(result) {
   const code = Object.hasOwn(AI_MESSAGES, result?.error?.code) ? result.error.code : 'AI_REQUEST_UNVERIFIED';
-  return { status: 'error', error: { code, message: AI_MESSAGES[code] }, meta: UNKNOWN_META };
+  return { status: 'error', error: { code, message: AI_MESSAGES[code] }, meta: result?.meta || UNKNOWN_META };
 }
 
 // ---------- DOM 도우미 ----------
@@ -224,7 +224,7 @@ function setChildren(target, ...children) {
 function formatTime(value) {
   if (typeof value !== 'string' || !value) return '시각 정보 없음';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ko-KR');
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('ko-KR', {timeZone:'Asia/Seoul'});
 }
 
 function stateLabel(kind, value) {
@@ -360,7 +360,14 @@ function validCoverage(kind, coverage, data, timing) {
 
 // coverageKind·timing 은 선택 인자다. 주지 않으면 기존과 같다.
 function toResource(result, validate, coverageKind, timing) {
-  if (!result.ok) return { status: 'error', error: result.error, meta: result.meta };
+  if (!result.ok) {
+    const messages = {
+      ENGINE_NOT_CONNECTED: '업무 서비스(SDP) 미연결로 조회할 수 없습니다. SDP 연결 상태에서 준비 안내를 확인하세요.',
+      REAL_SOURCE_UNAVAILABLE: '실제 업무 서비스의 조회 원천이 연결되지 않았습니다. 담당자에게 SDP 연결 환경을 확인하세요.',
+      SUBJECT_SCOPE_UNVERIFIED: '업무 서비스의 사용자·프로젝트 조회 범위를 확인할 수 없습니다. 담당자에게 SDP 세션과 본인 기록의 연결을 확인하세요. 앱 계정 로그인과는 별개의 확인입니다.',
+    };
+    return { status: 'error', error: {...result.error, message:messages[result.error?.code] || result.error?.message}, meta: result.meta };
+  }
   const mismatch = () => ({
     status: 'error',
     error: { code: 'CONTRACT_MISMATCH', message: UNVERIFIED_MESSAGE, retryable: false },
@@ -401,10 +408,10 @@ function renderMode() {
   document.documentElement.dataset.displayMode = display.mode;
   renderAvailability($('availability'), state, {demo:display.mode==='demo'});
   const badge = $('mode-badge');
-  const mode = currentMode();
-  badge.dataset.mode = mode;
-  badge.textContent = display.mode==='demo' ? '데모 · 모든 자료는 예제' : `실제 조회 · ${MODE_LABELS[mode]}`;
-  $('checked-at').textContent = state.checkedAt ? `${display.mode==='demo'?'예제 확인 시각':state.me.status==='error'?'조회 시도 시각':'확인 시각'} ${formatTime(state.checkedAt)}` : '';
+  badge.dataset.mode = display.mode==='demo' ? 'demo' : 'unknown';
+  badge.textContent = display.mode==='demo' ? '데모 · 모든 자료는 예제' : '실제 조회 모드';
+  $('checked-at').textContent = state.checkedAt ? `${display.mode==='demo'?'예제 업무자료 시각':state.me.status==='error'?'업무자료 조회 시도':'업무자료 확인'} ${formatTime(state.checkedAt)}` : '';
+  renderConnectionSummary();
   renderStudent('status');
 }
 
@@ -416,7 +423,11 @@ function renderErrors() {
     return;
   }
   const grouped=new Map();
-  for(const [key,message] of state.errors){if(!grouped.has(message))grouped.set(message,[]);grouped.get(message).push(RESOURCE_LABELS[key]||key);}
+  for(const [key,original] of state.errors){
+    const disconnected = state.me.meta?.mode==='disconnected' && ['ENGINE_NOT_CONNECTED','REAL_SOURCE_UNAVAILABLE','SUBJECT_SCOPE_UNVERIFIED'].includes(state[key]?.error?.code);
+    const message=disconnected?'업무 서비스(SDP)가 미연결 상태여서 조회할 수 없습니다. 담당자에게 SDP 설정과 서비스 준비 상태를 확인하세요. 앱 계정·AI의 확인 결과는 상단에 각각 표시됩니다.':original;
+    if(!grouped.has(message))grouped.set(message,[]);grouped.get(message).push(RESOURCE_LABELS[key]||key);
+  }
   const items=[...grouped].map(([message,names])=>el('li',{},[el('strong',{text:names.join(' · ')+': '}),message]));
   setChildren(box, el('ul', {}, items));
   box.hidden = false;
@@ -573,19 +584,43 @@ function markSectionLinks(){
 
 // ---------- 보호 현황 ----------
 
+function connectionItems() {
+  return aiConnectModule?.connectionSummary({nativeState:nativeLogin?.state,approvalState:aiConnect?.state,aiCheck:state.aiConnection,service:state.me,demo:display.mode==='demo'}) || [];
+}
+function renderConnectionSummary() {
+  const root=$('connection-summary');
+  const items=connectionItems();
+  if(!items.length){root.textContent='연결 상태 표시를 준비하는 중…';return;}
+  // Keep disclosure nodes/focus stable as independent responses arrive.
+  if(!root.querySelector('.connection-item')) {
+    setChildren(root,...items.map((item,index)=>el('div',{className:'connection-item','data-connection':index},[
+      el('strong'),el('small'),el('details',{},[el('summary',{text:'상태 안내'}),el('p')]),
+    ])));
+  }
+  items.forEach((item,index)=>{
+    const target=root.children[index];target.dataset.tone=item.tone;
+    target.querySelector('strong').textContent=`${item.label}: ${item.text}`;
+    const timeLabel=index===0||(index===1&&state.aiConnection.status==='idle')?'결과 수신 시각':'확인 시각';
+    target.querySelector('small').textContent=item.checkedAt?`${timeLabel}: ${formatTime(item.checkedAt)} KST`:'확인 시각: 미확인';
+    target.querySelector('p').textContent=item.detail;
+  });
+}
+
 function renderAiConnection() {
   const target = $('ai-connection-result'), resource = state.aiConnection;
   target.dataset.state = resource.status;
   $('ai-check-cancel').disabled = resource.status !== 'loading';
-  if (resource.status === 'idle') setChildren(target, stateBox('empty', 'AI 연결 점검 전입니다. 설정값 존재는 이용 권한 확인이 아닙니다.'));
-  else if (resource.status === 'loading') setChildren(target, stateBox('loading', '현재 로그인으로 AI 모델 응답을 점검하는 중…'));
+  if (resource.status === 'idle') setChildren(target, stateBox('empty', 'AI 이용 점검 전입니다. 이미 승인했다면 위의 「AI 이용 가능 여부 확인」으로 확인하세요. 승인을 다시 시작할 필요는 없습니다.'));
+  else if (resource.status === 'loading') setChildren(target, stateBox('loading', '앱 계정의 AI 이용 권한과 모델 목록을 확인하는 중…'));
   else if (resource.status === 'error') setChildren(target, stateBox('error', `${resource.error.code}: ${resource.error.message}`));
   else {
     const data = resource.data;
-    setChildren(target, el('p', { text: resource.meta.mode==='demo'?'예제 점검 결과 · 실제 AI 모델을 호출하지 않았습니다.':data.audienceAuthorization === 'test' ? '시험 연결 응답 · 실제 이용 권한 확인 아님' : '앱 권한 확인 후 모델 응답 점검' }),
-      el('dl', { className: 'kv' }, [el('dt', { text: resource.meta.mode==='demo'?'예제 모델 수':'응답 모델 수' }), el('dd', { text: `${data.modelCount}개` }), el('dt', { text: resource.meta.mode==='demo'?'예제 시각':'점검 시각' }), el('dd', { text: resource.meta.checkedAt })]),
+    setChildren(target, el('p', { text: resource.meta.mode==='demo'?'예제 점검 결과 · 실제 AI 모델을 호출하지 않았습니다.':data.audienceAuthorization === 'test' ? '시험 연결 응답 · 실제 이용 권한 확인 아님' : 'AI 이용 권한과 사용 가능한 모델 목록을 확인했습니다.' }),
+      el('dl', { className: 'kv' }, [el('dt', { text: resource.meta.mode==='demo'?'예제 모델 수':'사용 가능한 모델 수' }), el('dd', { text: `${data.modelCount}개` }), el('dt', { text: resource.meta.mode==='demo'?'예제 시각':'점검 시각' }), el('dd', { text: formatTime(resource.meta.checkedAt)+' KST' })]),
       el('p', { className: 'muted', text: '이 점검은 사건 설명을 실행하지 않았습니다. 실제 사건 설명의 근거와 결과는 보안 기록에서 별도로 확인하세요.' }));
   }
+  renderAiConnect();
+  renderConnectionSummary();
 }
 
 function cancelAiCheck({ reset = false } = {}) {
@@ -642,6 +677,7 @@ function renderAiConnect() {
   if(display.mode==='demo')return renderDemoConnection('ai');
   const target = $('ai-connect-result');
   const s = aiConnect ? aiConnect.state : { phase: aiConnectLoadFailed ? 'unknown' : 'idle', reason: aiConnectLoadFailed ? 'ALEKOV_CONNECT_NOT_MOUNTED' : null };
+  const checked = connectionItems()[1]?.tone==='ok';
   const busy = ['starting', 'finishing', 'cancelling'].includes(s.phase);
   if (connectExpiryTimer !== null) { clearTimeout(connectExpiryTimer); connectExpiryTimer = null; }
   const expiresMs = s.phase === 'awaiting_approval' ? Date.parse(s.expiresAt ?? '') : NaN;
@@ -653,7 +689,9 @@ function renderAiConnect() {
   $('ai-connect-finish').disabled = !aiConnect || s.phase !== 'awaiting_approval' || approvalExpired;
   $('ai-connect-status').disabled = !aiConnect || !s.connectionId || busy;
   $('ai-connect-cancel').disabled = !aiConnect || !['starting', 'awaiting_approval', 'finishing', 'checking'].includes(s.phase);
-  $('ai-connect-check').hidden = s.phase !== 'connected';
+  $('ai-connect-check').hidden = false;
+  $('ai-connect-check').disabled = busy || state.aiConnection.status==='loading';
+  $('ai-connect-start').textContent = s.phase==='connected'||checked ? 'AI 승인 다시 진행' : 'AI 연결 시작';
   const open = $('ai-connect-open');
   if (s.phase === 'awaiting_approval' && !approvalExpired && s.approvalUrl && aiConnectModule?.validApprovalUrl(s.approvalUrl, s.connectionId)) {
     open.href = s.approvalUrl;
@@ -663,13 +701,14 @@ function renderAiConnect() {
     open.hidden = true;
   }
   // 초록 확인 표시가 있는 승인 그림은 실제 connected 결과에서만 보인다.
-  $('ai-connect-art-connected').hidden = s.phase !== 'connected' || $('ai-connect-art-connected').dataset.broken === 'true';
+  $('ai-connect-art-connected').hidden = (s.phase !== 'connected'&&!checked) || $('ai-connect-art-connected').dataset.broken === 'true';
   $('ai-connect-art-unknown').hidden = !['unknown', 'error'].includes(s.phase) || $('ai-connect-art-unknown').dataset.broken === 'true';
   const message = aiConnectModule ? aiConnectModule.connectMessage(s)
     : aiConnectLoadFailed ? '이 앱 버전에는 아직 AI 연결 화면이 연결되지 않았습니다(미연결). 기존 설명·판정·기록은 그대로 쓸 수 있습니다.' : 'AI 연결 화면을 준비하는 중…';
   const kind = s.phase === 'connected' ? 'ok' : ['error', 'unknown'].includes(s.phase) ? 'error' : ['idle', 'cancelled'].includes(s.phase) ? 'empty' : 'loading';
+  const checkSummary = ['idle','connected'].includes(s.phase) && state.aiConnection.status!=='idle' ? connectionItems()[1] : null;
   setChildren(target,
-    stateBox(kind, s.phase==='idle'?'아직 AI 이용 승인을 시작하지 않았습니다.':message),
+    stateBox(checkSummary?.tone||kind, checked?'AI 이용 권한과 모델 목록이 확인됐습니다. 승인을 다시 진행할 필요는 없습니다.':checkSummary?checkSummary.detail:s.phase==='idle'?'이 화면에서 AI 승인을 아직 확인하지 않았습니다. 이미 승인했다면 「AI 이용 가능 여부 확인」을 누르세요.':message),
     s.phase === 'awaiting_approval' ? el('dl', { className: 'kv connect-code' }, [
       el('dt', { text: '확인 번호' }), el('dd', { testid: 'ai-connect-confirmation', text: s.confirmation }),
       el('dt', { text: '승인 기한' }), el('dd', { text: formatTime(s.expiresAt) }),
@@ -677,8 +716,9 @@ function renderAiConnect() {
     approvalExpired ? el('p', { testid: 'ai-connect-expired', className: 'muted', text: '승인 기한이 지났습니다. 이 요청으로는 더 승인할 수 없습니다. 「연결 취소」를 누른 뒤 「AI 연결 시작」으로 새로 시작하세요. 이미 승인했다면 「상태 다시 확인」으로 서버 결과를 먼저 확인하세요.' }) : null,
     s.phase === 'awaiting_approval' && !approvalExpired ? el('p', { className: 'muted', text: '새 창이 열리지 않으면 브라우저의 팝업·새 창 차단을 풀고 다시 누르세요. 승인 화면의 계정은 지금 로그인한 계정과 같아야 합니다.' }) : null,
     s.reason ? el('p', { className: 'muted', text: `상태 코드: ${s.reason}` }) : null,
-    appConnectInvalidated && s.phase === 'idle' ? el('p', { testid: 'ai-connect-invalidated', className: 'muted', text: '계정 연결이 바뀌어 이전 AI 앱 승인 표시를 화면에서 지웠습니다. 서버의 앱 권한을 취소한 것은 아닙니다. 필요하면 「AI 연결 시작」을 직접 눌러 다시 진행하세요.' }) : null,
+    appConnectInvalidated && s.phase === 'idle' && !checked ? el('p', { testid: 'ai-connect-invalidated', className: 'muted', text: '계정 확인 상태가 바뀌어 이전 AI 결과를 화면에서 지웠습니다. 서버의 승인을 취소한 것은 아닙니다. 앱 계정을 확인한 뒤 「AI 이용 가능 여부 확인」으로 기존 권한을 확인하세요.' }) : null,
   );
+  renderConnectionSummary();
 }
 
 // ---------- 계정 연결 확인(native 로그인) ----------
@@ -704,6 +744,7 @@ function renderNativeLogin() {
   const phase = view ? view.phase : fallback.phase;
   target.dataset.state = phase;
   $('native-login-start').disabled = !view || !view.canStart;
+  $('native-login-start').textContent = phase==='connected' ? '다른 계정으로 연결' : '계정 연결 시작';
   $('native-login-redeem').disabled = !view || !view.canRedeem;
   $('native-login-check').disabled = !view || !view.canCheck;
   $('native-login-cancel').disabled = !view || !view.canCancel;
@@ -729,6 +770,7 @@ function renderNativeLogin() {
     view && view.phase === 'connected' ? el('dl', { className: 'kv' }, [el('dt', { text: '연결 확인 기한' }), el('dd', { testid: 'native-login-until', text: until })]) : null,
     view && view.reason ? el('p', { className: 'muted', text: `상태 코드: ${view.reason}` }) : null,
   );
+  renderConnectionSummary();
 }
 
 const connectionFetch=display.guardActualFetch((path,options)=>fetch(path,{...options,headers:{...options.headers,'x-keshev-display-mode':'actual'}}));
@@ -740,7 +782,9 @@ function renderDemoConnection(kind){
   $(prefix+(native?'-redeem':'-finish')).disabled=!result||result.step==='cancel';
   $(prefix+'-cancel').disabled=!result||result.step==='cancel';
   $(prefix+'-open').hidden=true;$(prefix+'-open').removeAttribute('href');
+  $(prefix+'-start').textContent=native?'계정 연결 시작':'AI 연결 시작';
   if(!native){$('ai-connect-check').hidden=true;$('ai-connect-art-connected').hidden=true;$('ai-connect-art-unknown').hidden=true;}
+  renderConnectionSummary();
 }
 async function demoConnectionAction(kind,step){
   const epoch=display.epoch;
@@ -752,7 +796,10 @@ async function demoConnectionAction(kind,step){
 async function loadConnectModule() {
   try {
     aiConnectModule = await import('/ai-connect.mjs');
-    aiConnect = aiConnectModule.createAiConnectController({ transport: aiConnectModule.createFetchTransport({fetchImpl:connectionFetch}), onChange: () => renderAiConnect() });
+    aiConnect = aiConnectModule.createAiConnectController({ transport: aiConnectModule.createFetchTransport({fetchImpl:connectionFetch}), onChange: s => {
+      if(!['idle','connected'].includes(s.phase))cancelAiCheck({reset:true});
+      renderAiConnect();
+    } });
     // 만들기만 한다. 첫 화면에서 native 요청은 보내지 않는다.
     nativeLogin = aiConnectModule.createNativeLoginController({ transport: aiConnectModule.createNativeFetchTransport({fetchImpl:connectionFetch}), onChange: () => renderNativeLogin(), onInvalidate: () => invalidateAppConnectView() });
   } catch {

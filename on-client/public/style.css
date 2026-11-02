@@ -119,6 +119,26 @@ h4, h5 { font-size: 1rem; margin: 0 0 8px; color: var(--text); font-weight: 600;
 .mode-badge[data-mode="demo"] { background: var(--challenge-soft); color: var(--challenge); }
 .mode-badge[data-mode="disconnected"] { background: var(--deny-soft); color: var(--deny); }
 
+/* Each connection keeps its own evidence and time; the mode badge is not health. */
+.topbar { height: auto; min-height: 60px; flex-wrap: wrap; gap: 10px 20px; padding-top: 12px; padding-bottom: 12px; }
+.topbar-status { flex-wrap: wrap; }
+.connection-summary { flex: 1 0 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.connection-item { min-width: 0; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; background: var(--bg); font-size: .85rem; }
+.connection-item strong { display: block; }
+.connection-item[data-tone="ok"] strong { color: var(--allow); }
+.connection-item[data-tone="error"] strong { color: var(--deny); }
+.connection-item[data-tone="demo"] strong { color: var(--demo-neon); }
+.connection-item small { display: block; color: var(--muted); margin-top: 3px; font-size: .75rem; }
+.connection-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.connection-item details { margin-top: 4px; }
+.connection-item summary { cursor: pointer; color: var(--muted); font-size: .8rem; }
+.connection-item p { color: var(--muted); margin: 5px 0 0; font-size: .8rem; line-height: 1.5; }
+@media (max-width: 600px) {
+  .connection-summary { gap: 6px; }
+  .connection-item { padding: 6px; overflow-wrap: anywhere; }
+  .connection-item small { font-size: .7rem; }
+}
+
 /* 배치 */
 .layout {
   display: grid; grid-template-columns: 220px minmax(0, 1fr);

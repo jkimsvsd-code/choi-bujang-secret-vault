@@ -1,4 +1,4 @@
-const resources = [['me','로그인'],['devices','기기'],['sessions','세션'],['apps','업무 앱 목록'],['access','업무 앱 접속 판정'],['events','보안 기록']];
+const resources = [['me','업무 서비스 로그인'],['devices','등록 기기'],['sessions','업무 서비스 세션'],['apps','업무 앱 목록'],['access','업무 앱 접속 판정'],['events','보안 기록']];
 export function describeAvailability(resource) {
   if (!resource || resource.status === 'idle') return '조회 전';
   if (resource.status === 'loading') return '조회 중 · 응답 대기';
@@ -13,7 +13,7 @@ export function renderAvailability(root, state, {demo=false}={}) {
   root.replaceChildren();
   add(root,'p',demo?'데모 모드: 모든 수치·계정·기록은 설명용 예제입니다. PC 측정이나 서버 조회를 실행하지 않습니다.':'PC 상태·구성 조회: 이 PC를 일반 권한으로 직접 읽는 기능입니다. 버튼을 눌러야 조회하며, 성공 여부는 각 항목의 결과에서 확인하세요.');
   add(root,'p',demo?'예제는 설명용이며 실제 PC 상태나 업무 접속 성공을 뜻하지 않습니다.':'서버 자료는 연결된 서비스의 응답입니다. PC 실측이나 실제 업무 접속 성공과는 구분하세요. 확인 불가 항목은 이유를 확인하고 다시 조회하세요.');
-  add(root,'p','화면 전체 조회 기준입니다. 개별 카드에서 다시 조회한 결과는 해당 카드의 출처와 시각을 확인하세요.');
+  add(root,'p','아래 표는 업무 서비스 자료의 조회 결과입니다. 앱 계정·AI 이용 권한은 상단의 별도 상태를 확인하세요. 개별 카드에서 다시 조회한 결과는 해당 카드의 출처와 시각을 확인하세요.');
   const wrap=add(root,'div','');wrap.className='availability-table-wrap';wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label','현재 이용 범위 표');
   const table=add(wrap,'table','');add(table,'caption','최근 응답의 자료 구분과 확인 시각');
   const header=add(add(table,'thead',''),'tr','');

@@ -30,6 +30,16 @@ test('three native keyboard buttons, safe waiting and failed item guidance witho
   assert.match(root.textContent,/기기 조회 실패/);assert.match(root.textContent,/다시 조회하세요/);assert.doesNotMatch(root.textContent,/예제 자료/);
   assert.equal(controls[0].attrs['aria-disabled'],undefined);
 });
+
+test('business service failures point to SDP instead of repeating account or AI approval',async()=>{
+  for(const code of ['ENGINE_NOT_CONNECTED','SUBJECT_SCOPE_UNVERIFIED']){
+    const {root}=setup({get:async()=>({ok:false,error:{code}})});
+    await buttons(root)[0].listeners.click();
+    assert.match(root.textContent,/업무 서비스/);
+    assert.match(root.textContent,/SDP/);
+    assert.doesNotMatch(root.textContent,/로컬 앱 실행·계정 연결을 확인|계정 연결을 다시|「AI 연결 시작」|예제 자료/);
+  }
+});
 test('malformed response fails visibly; demo data is explicitly identified',async()=>{
   const {root}=setup({get:async()=>({ok:true,meta:{mode:'demo',checkedAt:'2026-10-27T00:00:00Z'},data:{}})});
   await buttons(root)[1].listeners.click();
