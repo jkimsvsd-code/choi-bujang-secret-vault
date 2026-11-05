@@ -28,6 +28,7 @@ const id=value=>typeof value==='string'&&/^[A-Za-z0-9][A-Za-z0-9._:-]{0,79}$/.te
 const record=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
 const text=value=>typeof value==='string'&&value.length<=2000;
 const files=new Map([['/','public/index.html'],['/index.html','public/index.html'],['/app.js','public/app.js'],['/style.css','public/style.css'],['/vulnerabilities-view.mjs','public/vulnerabilities-view.mjs'],['/student/extension.mjs','student/extension.mjs'],
+  ['/wazuh-incidents-view.mjs','public/wazuh-incidents-view.mjs'],
   ['/ai-connect.mjs','public/ai-connect.mjs'],
   ...['alekov-ai-explain','alekov-app-icon','alekov-connect-approval','alekov-connection-unknown','alekov-empty-records'].map(name=>[`/assets/alekov/${name}.webp`,`public/assets/alekov/${name}.webp`])]);
 const connectionRoutes=new Map(['start','finish','status','cancel'].map(kind=>[`/api/ai/connect/${kind}`,kind]));
@@ -386,6 +387,24 @@ export function createOnServer(serverOptions={}) {
       if(url.search)throw engineError('QUERY_REJECTED','지원하지 않는 요청입니다.',400);
       if(url.pathname.startsWith('/api/')&&req.headers['sec-fetch-site']==='cross-site')throw engineError('ORIGIN_REJECTED','');
       if(req.method==='POST'&&req.headers.origin!==`http://${host}`)throw engineError('ORIGIN_REJECTED','앱 화면에서 다시 요청하세요.',403);
+      const wazuhPath=url.pathname.slice('/api/wazuh'.length);
+      const wazuhRead=req.method==='GET'&&/^\/incidents(?:\/[0-9a-f-]{36})?$/.test(wazuhPath);
+      const wazuhReview=req.method==='POST'&&/^\/candidates\/[0-9a-f-]{36}\/review$/.test(wazuhPath);
+      if(url.pathname.startsWith('/api/wazuh/')&&(wazuhRead||wazuhReview)){
+        const body=wazuhReview?await bounded(()=>jsonBody(req,['action'],(_key,value)=>value==='approve'||value==='reject')):undefined;
+        let response,data;
+        try{
+          response=await bounded(signal=>fetch('http://127.0.0.1:8787/api'+wazuhPath,{
+            method:req.method,body:body===undefined?undefined:JSON.stringify(body),
+            headers:wazuhReview?{'content-type':'application/json'}:undefined,
+            redirect:'error',signal
+          }));
+          data=await bounded(()=>response.json());
+        }catch{
+          send(503,{error:'Wazuh 사건 서비스에 연결할 수 없습니다. 로컬 XDR 서버를 확인하세요.'});return;
+        }
+        send(response.status,response.ok?{data}:data);return;
+      }
       if(actualDisplay&&mode==='demo'&&(/^\/api\/(me|apps|events|devices|sessions|access|history)(?:\/|$)/.test(url.pathname)||/^\/api\/(actions|learner-support)(?:\/|$)/.test(url.pathname)||['/api/ai/check','/api/ai/explain'].includes(url.pathname))){
         send(503,{ok:false,error:{code:'REAL_SOURCE_UNAVAILABLE',message:'확인 불가 · 실제 계정·업무 서비스의 조회 원천이 연결되지 않았습니다. 담당자에게 연결 환경을 확인하세요. PC 조회와 SDP 상태는 각각 확인할 수 있습니다.',retryable:false}});return;
       }

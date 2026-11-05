@@ -59,6 +59,7 @@
           <a href="#student-explanation-title" data-section-link data-parent-view="records">AI 사건 설명</a>
           <a href="#action-title" data-section-link data-parent-view="records">조치 준비와 원천 결과</a>
           <a href="#student-action-title" data-section-link data-parent-view="records">조치 상태</a>
+          <a href="#wazuh-incidents-title" data-section-link data-parent-view="records">Wazuh 사건</a>
         </div>
         <div id="subnav-guide" class="subnav" role="tablist" aria-label="사용 안내 세부 기능" aria-orientation="vertical" data-for-view="guide" hidden>
           <button type="button" role="tab" id="subtab-guide-purpose" data-parent-view="guide" data-subview="purpose" aria-controls="subview-guide-purpose" aria-selected="true" tabindex="0">앱 목적</button>
@@ -297,6 +298,13 @@
         <section class="card student" aria-labelledby="student-action-title">
           <h2 id="student-action-title" tabindex="-1" class="section-anchor">조치 상태</h2>
           <div id="student-action" class="student-slot" aria-live="polite"></div>
+        </section>
+        <section class="card" aria-labelledby="wazuh-incidents-title">
+          <h2 id="wazuh-incidents-title" tabindex="-1" class="section-anchor">Wazuh 사건</h2>
+          <button type="button" class="btn" id="wazuh-refresh">사건 새로고침</button>
+          <p id="wazuh-status" role="status"></p>
+          <ul id="wazuh-incidents" aria-label="사건 목록"></ul>
+          <div id="wazuh-detail" aria-label="선택한 사건"></div>
         </section>
       </section>
       <section id="view-guide" class="view" role="tabpanel" aria-labelledby="tab-guide" hidden>

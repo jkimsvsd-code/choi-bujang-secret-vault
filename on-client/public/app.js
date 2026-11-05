@@ -7,7 +7,9 @@ import {createPcInspectionView, createSdpStatusView} from '/pc-inspection-view.m
 import { normalizeScan, createVulnerabilitiesView } from '/vulnerabilities-view.mjs';
 import { createHistoryView } from '/history-view.mjs';
 import { createPcStatusView } from '/pc-status-view.mjs';
+import { createWazuhIncidentsView } from '/wazuh-incidents-view.mjs';
 let historyView;
+const wazuhIncidents = createWazuhIncidentsView();
 
 const display = createDisplayMode({ actualRequest });
 const request = (path, options) => display.request(path, options);
@@ -504,6 +506,7 @@ function selectView(view, { focus = false, subview } = {}) {
   }
   if (changed) window.scrollTo({ ...(viewScrollPositions.get(nextKey) || { top: 0, left: 0 }), behavior: 'instant' });
   if (focus) focusNavTab(primary);
+  if (changed && view === 'records') wazuhIncidents.refresh();
 }
 
 function selectSubview(tab, { focus = false } = {}) {

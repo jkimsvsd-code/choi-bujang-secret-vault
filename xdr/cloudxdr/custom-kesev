@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+"""Forward the minimum Wazuh fields needed by the local XDR receiver."""
+import json
+import sys
+from urllib.error import HTTPError, URLError
+from urllib.request import ProxyHandler, Request, build_opener
+
+ENDPOINT = "http://127.0.0.1:18787/api/wazuh"
+
+
+def forward(path):
+    with open(path, encoding="utf-8") as alert_file:
+        alert = json.load(alert_file)
+    data = alert.get("data", {})
+    rule = alert.get("rule", {})
+    if not data.get("srcip"):
+        return
+    payload = {
+        "id": alert["id"],
+        "manager": {"name": alert["manager"]["name"]},
+        "data": {key: data[key] for key in ("srcip", "count") if key in data},
+        "rule": {key: rule[key] for key in ("groups", "description", "level") if key in rule},
+    }
+    request = Request(
+        ENDPOINT,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    opener = build_opener(ProxyHandler({}))
+    try:
+        with opener.open(request, timeout=5):
+            pass
+    except HTTPError as error:
+        if error.code != 422:
+            raise
+
+
+if __name__ == "__main__":
+    try:
+        forward(sys.argv[1])
+    except (OSError, URLError, ValueError, KeyError, TypeError, IndexError):
+        sys.exit("Kesev Wazuh delivery failed")

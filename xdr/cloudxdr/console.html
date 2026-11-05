@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CloudXDR 운영 콘솔</title>
+<style>
+:root { color-scheme:dark; font:16px system-ui; background:#101624; color:#eaf0fa }
+body { max-width:72rem; margin:2rem auto; padding:0 1rem }
+header { border-bottom:1px solid #38445d; margin-bottom:1rem }
+main { display:grid; grid-template-columns:minmax(15rem,1fr) 2fr; gap:1rem }
+section { background:#1a2336; border:1px solid #38445d; border-radius:.6rem; padding:1rem; overflow-wrap:anywhere }
+button { font:inherit; cursor:pointer; border:1px solid #647a9a; background:#273b59; color:inherit; padding:.45rem .7rem; border-radius:.35rem; margin:.25rem }
+button[aria-pressed=true] { background:#325e98 }
+button:disabled { opacity:.6; cursor:default }
+li { margin:.45rem 0 }
+#message { min-height:1.5rem; color:#ffce93 }
+@media(max-width:650px) { main { grid-template-columns:1fr } }
+</style>
+<header><h1>CloudXDR 운영 콘솔</h1><p>Wazuh 로그인 실패 · 차단 승인 검토 · 모의 대응</p></header>
+<button id="refresh">새로고침</button>
+<button id="demo">데모 경보 5건 접수</button>
+<p id="message" role="status"></p>
+<main>
+<section aria-labelledby="incidents-heading"><h2 id="incidents-heading">사건 목록</h2><ul id="incidents"></ul></section>
+<section id="detail" aria-label="사건 상세">사건을 선택하세요.</section>
+</main>
+<script>
+const element = id => document.getElementById(id);
+const detail = element('detail');
+const list = element('incidents');
+let selected;
+let busy = false;
+const time = ms => new Date(ms).toLocaleString('ko-KR');
+const labels = {
+  pending:'검토 대기', simulated:'모의 차단 완료', rejected:'반려', expired:'만료',
+  incident_created:'사건 생성', alert_received:'경보 접수', candidate_created:'차단 후보 생성',
+  candidate_expired:'후보 만료', approved:'승인', simulation_succeeded:'모의 대응 완료'
+};
+function append(parent, tag, text) {
+  const node = document.createElement(tag);
+  node.textContent = text;
+  parent.append(node);
+  return node;
+}
+function button(parent, label, action) {
+  const node = append(parent, 'button', label);
+  node.addEventListener('click', () => run(action));
+  return node;
+}
+async function api(path, body) {
+  const options = body === undefined ? {} : {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+  };
+  const response = await fetch(path, options);
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error);
+  return result;
+}
+async function run(work) {
+  if (busy) return;
+  busy = true;
+  element('message').textContent = '';
+  try { await work(); }
+  catch (error) { element('message').textContent = error.message; }
+  finally { busy = false; }
+}
+async function reload() {
+  const rows = await api('/api/incidents');
+  if (!rows.some(row => row.id === selected)) selected = rows[0]?.id;
+  list.replaceChildren();
+  if (!selected) append(list, 'li', '접수된 사건이 없습니다.');
+  for (const row of rows) {
+    const item = append(list, 'li', '');
+    const control = button(item, row.ip + ' · 경보 ' + row.hits + '건', async () => {
+      selected = row.id;
+      await reload();
+    });
+    control.setAttribute('aria-pressed', String(row.id === selected));
+  }
+  if (!selected) return;
+  const row = await api('/api/incidents/' + selected);
+  detail.replaceChildren();
+  append(detail, 'h2', row.ip + ' 로그인 실패');
+  append(detail, 'p', '접수 ' + row.hits + '건 · 최초 ' + time(row.opened));
+  append(detail, 'h3', '차단 후보');
+  const candidate = row.candidate;
+  if (candidate) {
+    append(detail, 'p', labels[candidate.status] + ' · ' + candidate.reason);
+    append(detail, 'p', '검토 만료 ' + time(candidate.expires));
+    if (candidate.status === 'simulated') append(detail, 'p', row.ip + ' 차단 모의 실행 성공');
+    if (candidate.status === 'pending') {
+      for (const [action, label] of [['approve','승인 및 모의 차단'],['reject','반려']]) {
+        button(detail, label, async () => {
+          try { await api('/api/candidates/' + candidate.id + '/review', { action }); }
+          finally { await reload(); }
+        });
+      }
+    }
+  } else {
+    append(detail, 'p', '차단 후보 생성 기준에 아직 도달하지 않았습니다.');
+  }
+  append(detail, 'h3', '감사 이력');
+  const audit = append(detail, 'ol', '');
+  for (const event of row.audit) {
+    append(audit, 'li', time(event.at) + ' · ' + (labels[event.action] ?? event.action) + ' · ' + event.detail);
+  }
+}
+element('refresh').addEventListener('click', () => run(reload));
+element('demo').addEventListener('click', () => run(async () => {
+  const batch = crypto.randomUUID();
+  const ip = '2001:db8::' + batch.slice(0, 4) + ':' + batch.slice(4, 8);
+  for (let i = 1; i <= 5; i++) {
+    const result = await api('/api/wazuh', { id: batch + '.' + i, manager: { name:'demo' },
+      data: { srcip:ip }, rule: { groups:['authentication_failed'], description:'sshd: Failed password' } });
+    selected = result.incidentId;
+  }
+  await reload();
+}));
+run(reload);
+</script>
+</html>
