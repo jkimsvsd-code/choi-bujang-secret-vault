@@ -19,227 +19,274 @@
       <span class="brand-name">케셰브vJ <small>ZTNA &amp; XDR 보안 Agent</small></span>
     </div>
     <div class="topbar-status">
-      <span id="mode-badge" class="mode-badge" data-mode="loading" role="status" aria-live="polite">상태 확인 중</span>
+      <label class="demo-switch">
+        <input id="demo-toggle" type="checkbox" role="switch" aria-describedby="display-mode-note">
+        <span>예제와 데모</span>
+        <span class="demo-switch-track" aria-hidden="true"><span class="demo-switch-off">OFF</span><span class="demo-switch-on">ON</span></span>
+      </label>
+      <span id="mode-badge" class="mode-badge" data-mode="unknown">실제 조회 모드</span>
       <span id="checked-at" class="checked-at"></span>
       <button type="button" id="refresh" class="btn">다시 불러오기</button>
     </div>
+    <div id="connection-summary" class="connection-summary" role="status" aria-live="polite" aria-label="계정·AI·업무 서비스별 최근 확인 결과"></div>
   </header>
 
   <div class="layout">
     <nav class="sidebar" aria-label="주 메뉴">
-      <div role="tablist" aria-orientation="vertical" id="nav">
-        <button type="button" role="tab" id="tab-protection" data-testid="nav-protection" data-view="protection" aria-controls="view-protection" aria-selected="true" tabindex="0">보호 현황</button>
-        <button type="button" role="tab" id="tab-apps" data-testid="nav-apps" data-view="apps" aria-controls="view-apps" aria-selected="false" tabindex="-1">업무 앱</button>
-        <button type="button" role="tab" id="tab-records" data-testid="nav-records" data-view="records" aria-controls="view-records" aria-selected="false" tabindex="-1">보안 기록</button>
-        <button type="button" role="tab" id="tab-guide" data-testid="nav-guide" data-view="guide" aria-controls="view-guide" aria-selected="false" tabindex="-1">사용 안내</button>
+      <div id="nav">
+        <div id="primary-tabs" role="tablist" aria-label="주 화면" aria-orientation="vertical">
+          <button type="button" role="tab" class="main-tab" id="tab-protection" data-testid="nav-protection" data-view="protection" aria-controls="view-protection" aria-selected="true" tabindex="0">보호 현황</button>
+          <button type="button" role="tab" class="main-tab" id="tab-apps" data-testid="nav-apps" data-view="apps" aria-controls="view-apps" aria-selected="false" tabindex="-1">업무 앱</button>
+          <button type="button" role="tab" class="main-tab" id="tab-records" data-testid="nav-records" data-view="records" aria-controls="view-records" aria-selected="false" tabindex="-1">보안 기록</button>
+          <button type="button" role="tab" class="main-tab" id="tab-guide" data-testid="nav-guide" data-view="guide" aria-controls="view-guide" aria-selected="false" tabindex="-1">사용 안내</button>
+        </div>
+        <div id="subnav-protection" class="subnav" role="tablist" aria-label="보호 현황 세부 기능" aria-orientation="vertical" data-for-view="protection">
+          <button type="button" role="tab" id="subtab-protection-pc" data-parent-view="protection" data-subview="pc" aria-controls="subview-protection-pc" aria-selected="true" tabindex="0">PC 상태</button>
+          <button type="button" role="tab" id="subtab-protection-inspection" data-parent-view="protection" data-subview="inspection" aria-controls="subview-protection-inspection" aria-selected="false" tabindex="-1">PC 구성·Windows 기록</button>
+          <button type="button" role="tab" id="subtab-protection-sdp" data-parent-view="protection" data-subview="sdp" aria-controls="subview-protection-sdp" aria-selected="false" tabindex="-1">SDP 연결 상태</button>
+          <button type="button" role="tab" id="subtab-protection-overview" data-parent-view="protection" data-subview="overview" aria-controls="subview-protection-overview" aria-selected="false" tabindex="-1">내 보안 현황</button>
+          <button type="button" role="tab" id="subtab-protection-connection" data-parent-view="protection" data-subview="connection" aria-controls="subview-protection-connection" aria-selected="false" tabindex="-1">계정·AI 연결</button>
+          <button type="button" role="tab" id="subtab-protection-packages" data-parent-view="protection" data-subview="packages" aria-controls="subview-protection-packages" aria-selected="false" tabindex="-1">패키지·취약점</button>
+          <button type="button" role="tab" id="subtab-protection-help" data-parent-view="protection" data-subview="help" aria-controls="subview-protection-help" aria-selected="false" tabindex="-1">도움정보</button>
+        </div>
+        <div id="subnav-apps" class="subnav" role="tablist" aria-label="업무 앱 세부 기능" aria-orientation="vertical" data-for-view="apps" hidden>
+          <button type="button" role="tab" id="subtab-apps-choose" data-parent-view="apps" data-subview="choose" aria-controls="subview-apps-choose" aria-selected="true" tabindex="0">앱 선택·확인 결과</button>
+          <button type="button" role="tab" id="subtab-apps-decision" data-parent-view="apps" data-subview="decision" aria-controls="subview-apps-decision" aria-selected="false" tabindex="-1">판정 상세</button>
+        </div>
+        <div id="subnav-records" class="subnav section-nav" data-for-view="records" aria-label="보안 기록 페이지 내 이동" hidden>
+          <a href="#records-title" data-section-link data-parent-view="records">이번 기록</a>
+          <a href="#history-title" data-section-link data-parent-view="records">조회 이력</a>
+          <a href="#student-explanation-title" data-section-link data-parent-view="records">AI 사건 설명</a>
+          <a href="#action-title" data-section-link data-parent-view="records">조치 준비와 원천 결과</a>
+          <a href="#student-action-title" data-section-link data-parent-view="records">조치 상태</a>
+          <a href="#wazuh-incidents-title" data-section-link data-parent-view="records">Wazuh 사건</a>
+        </div>
+        <div id="subnav-guide" class="subnav" role="tablist" aria-label="사용 안내 세부 기능" aria-orientation="vertical" data-for-view="guide" hidden>
+          <button type="button" role="tab" id="subtab-guide-purpose" data-parent-view="guide" data-subview="purpose" aria-controls="subview-guide-purpose" aria-selected="true" tabindex="0">앱 목적</button>
+          <button type="button" role="tab" id="subtab-guide-start" data-parent-view="guide" data-subview="start" aria-controls="subview-guide-start" aria-selected="false" tabindex="-1">처음 할 일</button>
+          <button type="button" role="tab" id="subtab-guide-roles" data-parent-view="guide" data-subview="roles" aria-controls="subview-guide-roles" aria-selected="false" tabindex="-1">탭별 역할</button>
+          <div id="guide-role-links" class="section-nav guide-role-links" role="group" aria-label="탭별 세부 기능 페이지 내 이동" hidden>
+            <a href="#guide-features-protection" data-section-link data-parent-view="guide" data-guide-subview="roles">보호 현황 세부 기능</a>
+            <a href="#guide-features-apps" data-section-link data-parent-view="guide" data-guide-subview="roles">업무 앱 세부 기능</a>
+            <a href="#guide-features-records" data-section-link data-parent-view="guide" data-guide-subview="roles">보안 기록 세부 기능</a>
+          </div>
+          <button type="button" role="tab" id="subtab-guide-reading" data-parent-view="guide" data-subview="reading" aria-controls="subview-guide-reading" aria-selected="false" tabindex="-1">결과 읽는 법</button>
+          <button type="button" role="tab" id="subtab-guide-availability" data-parent-view="guide" data-subview="availability" aria-controls="subview-guide-availability" aria-selected="false" tabindex="-1">현재 이용 범위</button>
+        </div>
       </div>
-      <p class="sidebar-note">메뉴는 위·아래 방향키로 이동할 수 있습니다.</p>
+      <p class="sidebar-note">위·아래: 탭 이동<br>오른쪽: 세부 기능<br>왼쪽·Esc: 상위 메뉴</p>
     </nav>
 
     <main id="main" tabindex="-1">
+      <p id="display-mode-note" class="notice mode-notice" role="status">실제 조회 모드 · PC 측정은 버튼을 눌러 실행합니다. 연결되지 않은 항목은 확인 불가로 표시합니다.</p>
       <div id="error-message" class="error-banner" data-testid="error-message" role="alert" hidden></div>
-
-      <p class="notice">
-        <strong>제공 공통 UI</strong>와 <strong>학생 구현 표시</strong>(student/extension.mjs)는 구분되어 있습니다.
-        제공 코드는 학생 성취로 계산되지 않으며, 예제(demo)·연결 없음 상태는 실제 연결 성공이 아닙니다.
-      </p>
-
-      <section class="card" aria-labelledby="availability-title">
-        <details>
-          <summary id="availability-title">현재 이용 범위</summary>
-          <div id="availability" aria-live="polite"></div>
-        </details>
-        <p class="muted">PC 조회는 직접 실행하는 기능입니다. 다른 자료의 예제 여부와 확인 시각은 펼쳐 확인하세요.</p>
-      </section>
 
       <section id="view-protection" class="view" role="tabpanel" aria-labelledby="tab-protection">
         <h1>보호 현황</h1>
-        <p class="notice">내 PC와 로그인·연결 상태의 최근 조회 결과를 확인합니다. 예제와 실제 조회는 각 항목의 출처·시각으로 구분하세요. 이 화면은 실시간 보호나 안전을 보장하는 판정이 아니며, PC 조회 성공과 업무 서비스 연결 성공은 별개입니다.</p>
-        <section class="card student" aria-labelledby="pc-status-title">
-          <h2 id="pc-status-title">내 PC 상태 · 학생 추가 기능</h2>
-          <div id="pc-status"></div>
-        </section>
-        <section class="card student" aria-labelledby="pc-inspection-title">
-          <h2 id="pc-inspection-title">PC 구성·Windows 기록 · 학생 추가 기능</h2>
-          <div id="pc-inspection"></div>
-        </section>
-
-        <div class="identity-overview-grid">
-          <section class="card provided" aria-labelledby="identity-title">
-            <h2 id="identity-title">현재 로그인 <span class="tag">제공</span></h2>
-            <dl class="identity">
-              <dt>사용자</dt><dd data-testid="identity-user" id="identity-user">불러오는 중</dd>
-              <dt>기기</dt><dd data-testid="identity-device" id="identity-device">불러오는 중</dd>
-              <dt>세션</dt><dd data-testid="identity-session" id="identity-session">불러오는 중</dd>
-            </dl>
-          </section>
-          <section class="card provided" aria-labelledby="devices-title">
-            <h2 id="devices-title">내 기기 <span class="tag">제공</span></h2>
-            <div id="devices" aria-live="polite"></div>
-          </section>
-          <section class="card provided" aria-labelledby="sessions-title">
-            <h2 id="sessions-title">내 세션 <span class="tag">제공</span></h2>
-            <div id="sessions" aria-live="polite"></div>
+        <p class="notice">내 PC와 연결 상태의 최근 결과를 확인합니다. 실시간 보호·안전 판정은 아니며, PC 조회 성공과 업무 서비스 연결 성공은 별개입니다.</p>
+        <div id="subview-protection-pc" data-subpanel-view="protection" data-subpanel="pc" role="tabpanel" aria-labelledby="subtab-protection-pc" tabindex="0">
+          <section class="card student" aria-labelledby="pc-status-title">
+            <h2 id="pc-status-title">내 PC 상태</h2>
+            <div id="pc-status"></div>
           </section>
         </div>
-
-        <section class="card student" aria-labelledby="student-identity-title">
-          <h2 id="student-identity-title">내 보안 현황</h2>
-          <div id="student-identity" class="student-slot" aria-live="polite"></div>
-          <details>
-            <summary>구현 정보</summary>
-            <p>공통 화면은 제공 기능이며, 이 영역의 요약·재조회 표시는 학생 구현입니다.</p>
-            <p><code>student/extension.mjs · renderIdentity</code></p>
-          </details>
-        </section>
-
-        <section class="card student" aria-labelledby="student-status-title">
-          <h2 id="student-status-title">학생 상태·알림 표시 <span class="tag tag-student">student/extension.mjs · renderStatus</span></h2>
-          <div id="student-status" class="student-slot" aria-live="polite"></div>
-        </section>
-
-        <section class="card provided" aria-labelledby="diag-title">
-          <h2 id="diag-title">도움정보 <span class="tag">제공</span></h2>
-          <p class="muted">서버의 비밀 없는 연결 점검 결과를 불러와 직접 확인한 뒤 복사할 수 있습니다. 자동으로 전송하지 않습니다.</p>
-          <div class="row">
-            <button type="button" id="diag-load" class="btn">도움정보 불러오기</button>
-            <button type="button" id="diag-copy" class="btn" disabled>확인했으며 복사합니다</button>
+        <div id="subview-protection-inspection" data-subpanel-view="protection" data-subpanel="inspection" role="tabpanel" aria-labelledby="subtab-protection-inspection" tabindex="0" hidden>
+          <section class="card student" aria-labelledby="pc-inspection-title">
+            <h2 id="pc-inspection-title">PC 구성·Windows 기록</h2>
+            <div id="pc-inspection"></div>
+          </section>
+        </div>
+        <div id="subview-protection-sdp" data-subpanel-view="protection" data-subpanel="sdp" role="tabpanel" aria-labelledby="subtab-protection-sdp" tabindex="0" hidden>
+          <section class="card" aria-labelledby="sdp-title"><h2 id="sdp-title">SDP 연결 상태</h2><div id="sdp-status"></div></section>
+        </div>
+        <div id="subview-protection-overview" data-subpanel-view="protection" data-subpanel="overview" role="tabpanel" aria-labelledby="subtab-protection-overview" tabindex="0" hidden>
+          <div class="identity-overview-grid">
+            <section class="card provided" aria-labelledby="identity-title">
+              <h2 id="identity-title">업무 서비스 로그인</h2>
+              <p class="muted">업무 서비스에서 확인한 계정입니다. 앱 계정 로그인과 별개입니다.</p>
+              <div data-testid="identity-user" id="identity-user" aria-live="polite"><p class="state state-loading">불러오는 중</p></div>
+            </section>
+            <section class="card provided" aria-labelledby="devices-title">
+              <h2 id="devices-title">내 기기</h2>
+              <div id="devices" aria-live="polite"></div>
+            </section>
+            <section class="card provided" aria-labelledby="sessions-title">
+              <h2 id="sessions-title">내 세션</h2>
+              <div id="sessions" aria-live="polite"></div>
+            </section>
           </div>
-          <p id="diag-status" class="muted" role="status" aria-live="polite"></p>
-          <pre id="diag-output" class="diag-output" tabindex="0" hidden></pre>
-        </section>
 
-        <section class="card provided" aria-labelledby="ai-connect-title" data-testid="ai-connect-card">
-          <h2 id="ai-connect-title">AI 연결 <span class="tag">제공 · 17단계 연결 절차</span></h2>
-          <div class="connect-layout">
-            <div class="connect-body">
-              <div class="native-login" data-testid="native-login">
-                <h3 id="native-login-title">계정 연결 확인 (AI 앱 승인과 별도)</h3>
-                <p class="muted">이 PC의 보안 Agent 앱을 내 ALEPH 계정에 연결합니다. 비밀번호나 API 키를 옮겨 적을 필요가 없습니다. 계정을 연결한 뒤에는 아래에서 AI 사용 승인을 따로 진행하세요.</p>
-                <ol class="connect-steps">
-                  <li>「계정 연결 시작」을 누릅니다.</li>
-                  <li>「계정 확인 페이지 열기」로 포털을 열고, 이 화면에 보이는 6자리 확인 번호를 포털에 입력해 확인합니다.</li>
-                  <li>이 화면으로 돌아와 「로그인 확인 완료」를 누릅니다.</li>
-                  <li>계정 연결이 확인되면 AI 앱 승인은 아래 「AI 연결 시작」으로 따로 진행합니다.</li>
-                </ol>
-                <div class="row">
-                  <button type="button" id="native-login-start" class="btn" disabled>계정 연결 시작</button>
-                  <a id="native-login-open" class="btn btn-link" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>계정 확인 페이지 열기</a>
-                  <button type="button" id="native-login-redeem" class="btn" disabled>로그인 확인 완료</button>
-                  <button type="button" id="native-login-check" class="btn" disabled>현재 로그인 확인</button>
-                  <button type="button" id="native-login-cancel" class="btn" disabled>계정 연결 취소</button>
+          <section class="card student" aria-labelledby="student-identity-title">
+            <h2 id="student-identity-title">내 보안 현황</h2>
+            <div id="student-identity" class="student-slot" aria-live="polite"></div>
+          </section>
+
+          <section class="card student" aria-labelledby="student-status-title">
+            <h2 id="student-status-title">업무 서비스 조회·알림</h2>
+            <div id="student-status" class="student-slot" aria-live="polite"></div>
+          </section>
+        </div>
+        <div id="subview-protection-connection" data-subpanel-view="protection" data-subpanel="connection" role="tabpanel" aria-labelledby="subtab-protection-connection" tabindex="0" hidden>
+          <section class="card provided" aria-labelledby="ai-connect-title" data-testid="ai-connect-card">
+            <h2 id="ai-connect-title">계정·AI 연결</h2>
+            <div class="connect-layout">
+              <div class="connect-body">
+                <div class="native-login" data-testid="native-login">
+                  <h3 id="native-login-title">1. 앱 계정 로그인</h3>
+                  <p class="muted">이미 로그인했다면 「앱 계정 확인」을 누르세요. 업무 서비스(SDP) 연결은 별도입니다.</p>
+                  <details class="feature-help">
+                    <summary>연결 절차 보기</summary>
+                    <ol class="connect-steps">
+                      <li>「계정 연결 시작」을 누릅니다.</li>
+                      <li>「계정 확인 페이지 열기」로 포털을 열고, 이 화면에 보이는 6자리 확인 번호를 포털에 입력해 확인합니다.</li>
+                      <li>이 화면으로 돌아와 「로그인 확인 완료」를 누릅니다.</li>
+                      <li>계정 확인 후 AI 이용 권한을 확인합니다. AI 승인을 한 적이 없는 경우에만 「AI 연결 시작」을 누르세요.</li>
+                    </ol>
+                  </details>
+                  <div class="row">
+                    <button type="button" id="native-login-start" class="btn" disabled>계정 연결 시작</button>
+                    <a id="native-login-open" class="btn btn-link" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>계정 확인 페이지 열기</a>
+                    <button type="button" id="native-login-redeem" class="btn" disabled>로그인 확인 완료</button>
+                    <button type="button" id="native-login-check" class="btn" disabled>앱 계정 확인</button>
+                    <button type="button" id="native-login-cancel" class="btn" disabled>계정 연결 취소</button>
+                  </div>
+                  <div id="native-login-result" class="ai-result" data-testid="native-login-result" data-state="idle" aria-live="polite"></div>
                 </div>
-                <div id="native-login-result" class="ai-result" data-testid="native-login-result" data-state="idle" aria-live="polite"></div>
+                <h3>2. AI 사용 승인</h3>
+                <p class="muted">이미 승인했다면 「AI 이용 가능 여부 확인」으로 점검하세요. 새 승인은 처음 연결하거나 권한을 다시 부여할 때만 진행합니다.</p>
+                <details class="feature-help">
+                  <summary>연결 절차 보기</summary>
+                  <ol class="connect-steps">
+                      <li>「AI 연결 시작」을 누릅니다.</li>
+                      <li>확인 번호를 보고 「승인 페이지 열기」로 Workbench 승인 화면을 엽니다.</li>
+                      <li>같은 번호인지 확인하고 승인한 뒤 「승인했으며 연결 확인」을 누릅니다.</li>
+                      <li>연결 완료·실패·확인 불가 중 결과를 확인합니다.</li>
+                      <li>승인 완료면 「AI 이용 가능 여부 확인」으로 이용 권한과 모델 목록을 확인합니다. 답변을 생성하는 점검은 아닙니다.</li>
+                    </ol>
+                  <p>Workbench 로그인 승인 화면에서 이 앱 연결을 승인하면 연결 정보는 이 PC의 앱 서버가 따로 보관합니다. 연결 뒤에는 Workbench를 계속 켜 둘 필요가 없습니다.</p>
+                </details>
+                <div class="row">
+                  <button type="button" id="ai-connect-start" class="btn" disabled>AI 연결 시작</button>
+                  <a id="ai-connect-open" class="btn btn-link" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>승인 페이지 열기</a>
+                  <button type="button" id="ai-connect-finish" class="btn" disabled>승인했으며 연결 확인</button>
+                  <button type="button" id="ai-connect-status" class="btn" disabled>상태 다시 확인</button>
+                  <button type="button" id="ai-connect-cancel" class="btn" disabled>연결 취소</button>
+                  <button type="button" id="ai-connect-check" class="btn">AI 이용 가능 여부 확인</button>
+                </div>
+                <div id="ai-connect-result" class="ai-result" data-testid="ai-connect-result" data-state="idle" aria-live="polite"></div>
+                <details class="feature-help"><summary>연결 문제 도움정보</summary>
+                <div class="row">
+                  <button type="button" id="ai-connect-help" class="btn">연결 도움정보 보기</button>
+                  <button type="button" id="ai-connect-help-copy" class="btn" disabled>확인했으며 복사합니다</button>
+                </div>
+                <p id="ai-connect-help-status" class="muted" role="status" aria-live="polite"></p>
+                <pre id="ai-connect-help-output" class="diag-output" tabindex="0" hidden></pre>
+                </details>
               </div>
-              <p class="muted">주소·열쇠를 직접 입력하지 않습니다. 기존 Workbench 로그인 승인 화면에서 이 앱 연결을 승인하면 연결 정보는 이 PC의 앱 서버가 따로 보관합니다. 연결 뒤에는 Workbench 를 계속 켜 둘 필요가 없습니다. 이 안내는 연결 절차이며 통과·점수·순위 판정이 아닙니다.</p>
-              <ol class="connect-steps">
-                <li>「AI 연결 시작」을 누릅니다.</li>
-                <li>확인 번호를 보고 「승인 페이지 열기」로 Workbench 승인 화면을 엽니다.</li>
-                <li>같은 번호인지 확인하고 승인한 뒤 「승인했으며 연결 확인」을 누릅니다.</li>
-                <li>연결 완료·실패·확인 불가 중 결과를 확인합니다.</li>
-                <li>연결 완료면 「현재 API 연결 점검」으로 모델 응답을 점검합니다.</li>
-              </ol>
-              <div class="row">
-                <button type="button" id="ai-connect-start" class="btn" disabled>AI 연결 시작</button>
-                <a id="ai-connect-open" class="btn btn-link" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>승인 페이지 열기</a>
-                <button type="button" id="ai-connect-finish" class="btn" disabled>승인했으며 연결 확인</button>
-                <button type="button" id="ai-connect-status" class="btn" disabled>상태 다시 확인</button>
-                <button type="button" id="ai-connect-cancel" class="btn" disabled>연결 취소</button>
-                <button type="button" id="ai-connect-check" class="btn" hidden>현재 API 연결 점검</button>
+              <div class="connect-art">
+                <img id="ai-connect-art-connected" class="alekov-art art-connect" src="/assets/alekov/alekov-connect-approval.webp" alt="" aria-hidden="true" draggable="false" hidden>
+                <img id="ai-connect-art-unknown" class="alekov-art art-connect" src="/assets/alekov/alekov-connection-unknown.webp" alt="" aria-hidden="true" draggable="false" hidden>
               </div>
-              <div id="ai-connect-result" class="ai-result" data-testid="ai-connect-result" data-state="idle" aria-live="polite"></div>
-              <div class="row">
-                <button type="button" id="ai-connect-help" class="btn">연결 도움정보 보기</button>
-                <button type="button" id="ai-connect-help-copy" class="btn" disabled>확인했으며 복사합니다</button>
-              </div>
-              <p id="ai-connect-help-status" class="muted" role="status" aria-live="polite"></p>
-              <pre id="ai-connect-help-output" class="diag-output" tabindex="0" hidden></pre>
             </div>
-            <div class="connect-art">
-              <img id="ai-connect-art-connected" class="alekov-art art-connect" src="/assets/alekov/alekov-connect-approval.webp" alt="" aria-hidden="true" draggable="false" hidden>
-              <img id="ai-connect-art-unknown" class="alekov-art art-connect" src="/assets/alekov/alekov-connection-unknown.webp" alt="" aria-hidden="true" draggable="false" hidden>
+          </section>
+
+          <section class="card provided" aria-labelledby="ai-connection-title">
+            <h2 id="ai-connection-title">3. AI 이용 가능 여부</h2>
+            <p class="muted">현재 앱 계정의 AI 이용 권한과 모델 목록을 확인합니다. 사건 설명에는 업무 서비스 기록과 계정 대응 확인도 필요하며, 보안 기록에서 별도로 요청합니다.</p>
+            <div class="row">
+              <button type="button" id="ai-check" class="btn">AI 이용 가능 여부 다시 확인</button>
+              <button type="button" id="ai-check-cancel" class="btn" disabled>AI 이용 점검 취소</button>
             </div>
-          </div>
-        </section>
-
-        <section class="card provided" aria-labelledby="ai-connection-title">
-          <h2 id="ai-connection-title">AI 연결 점검 <span class="tag">제공</span></h2>
-          <p class="muted">현재 로그인과 앱 권한으로 모델 응답을 점검합니다. 설정값 존재·모델 목록 응답은 사건 설명의 성공과 별도로 확인합니다. 브라우저에서 열쇠를 입력하거나 복사하지 않습니다.</p>
-          <div class="row">
-            <button type="button" id="ai-check" class="btn">AI 연결 점검</button>
-            <button type="button" id="ai-check-cancel" class="btn" disabled>AI 연결 점검 취소</button>
-          </div>
-          <div id="ai-connection-result" class="ai-result" data-state="idle" aria-live="polite"></div>
-        </section>
-        <section class="card student" aria-labelledby="student-ai-connection-title">
-          <h2 id="student-ai-connection-title">학생 AI 연결 표시 <span class="tag tag-student">student/extension.mjs · renderAiConnection</span></h2>
-          <div id="student-ai-connection" class="student-slot" aria-live="polite"></div>
-        </section>
-
-        <section class="card provided" aria-labelledby="vulnerabilities-title">
-          <h2 id="vulnerabilities-title">설치 패키지와 취약점 정보 <span class="tag">제공 · OSV</span></h2>
-          <p class="muted">서버에 연결한 프로젝트의 공개 조회 승인 패키지만 정확한 설치 버전으로 대조합니다. 조회 실패와 미조회는 알려진 항목 없음이 아닙니다.</p>
-          <div class="row">
-            <button type="button" id="vulnerabilities-load" class="btn">설치 패키지 조회</button>
-            <button type="button" id="vulnerabilities-cancel" class="btn" disabled>패키지 조회 취소</button>
-          </div>
-          <div id="vulnerabilities-result" class="vulnerabilities-result" aria-live="polite"></div>
-        </section>
-        <section class="card student" aria-labelledby="student-vulnerabilities-title">
-          <h2 id="student-vulnerabilities-title">학생 패키지 조회 표시 <span class="tag tag-student">student/extension.mjs · renderVulnerabilities</span></h2>
-          <div id="student-vulnerabilities" class="student-slot" aria-live="polite"></div>
-        </section>
+            <div id="ai-connection-result" class="ai-result" data-state="idle" aria-live="polite"></div>
+          </section>
+        </div>
+        <div id="subview-protection-packages" data-subpanel-view="protection" data-subpanel="packages" role="tabpanel" aria-labelledby="subtab-protection-packages" tabindex="0" hidden>
+          <section class="card provided" aria-labelledby="vulnerabilities-title">
+            <h2 id="vulnerabilities-title">설치 패키지와 취약점 정보</h2>
+            <p class="muted">담당자가 지정하고 공개 조회를 승인한 소프트웨어 부품(패키지)의 설치 버전을 확인합니다. PC 전체 프로그램 검사는 아니며, 조회 실패와 미조회는 알려진 취약점 없음이 아닙니다.</p>
+            <div class="row">
+              <button type="button" id="vulnerabilities-load" class="btn">설치 패키지 조회</button>
+              <button type="button" id="vulnerabilities-cancel" class="btn" disabled>패키지 조회 취소</button>
+            </div>
+            <div id="vulnerabilities-result" class="vulnerabilities-result" aria-live="polite"></div>
+          </section>
+          <section class="card student" aria-labelledby="student-vulnerabilities-title">
+            <h2 id="student-vulnerabilities-title">패키지 조회 상세</h2>
+            <div id="student-vulnerabilities" class="student-slot" aria-live="polite"></div>
+          </section>
+        </div>
+        <div id="subview-protection-help" data-subpanel-view="protection" data-subpanel="help" role="tabpanel" aria-labelledby="subtab-protection-help" tabindex="0" hidden>
+          <section class="card provided" aria-labelledby="diag-title">
+            <h2 id="diag-title">도움정보</h2>
+            <p class="muted">서버의 비밀 없는 연결 점검 결과를 불러와 직접 확인한 뒤 복사할 수 있습니다. 자동으로 전송하지 않습니다.</p>
+            <div class="row">
+              <button type="button" id="diag-load" class="btn">도움정보 불러오기</button>
+              <button type="button" id="diag-copy" class="btn" disabled>확인했으며 복사합니다</button>
+            </div>
+            <p id="diag-status" class="muted" role="status" aria-live="polite"></p>
+            <pre id="diag-output" class="diag-output" tabindex="0" hidden></pre>
+          </section>
+        </div>
       </section>
 
       <section id="view-apps" class="view" role="tabpanel" aria-labelledby="tab-apps" hidden>
         <h1>업무 앱</h1>
-        <p class="notice">업무 서비스에 접속하지 못할 때, 현재 계정·기기로 이용할 수 있는지와 거부 이유를 확인합니다. 앱을 선택하면 접속 가능 여부를 요청하며, 실제 업무 사이트를 여는 기능은 아닙니다. 직접 접속이 잘 되고 조직의 별도 지침이 없다면 반드시 이 탭을 거칠 필요는 없습니다. 실제 판정에는 조직 연결과 권한이 필요하며 예제 결과는 연습용입니다.</p>
-        <div class="grid-2">
-          <section class="card provided" aria-labelledby="apps-title">
-            <h2 id="apps-title">접속 요청 <span class="tag">제공</span></h2>
-            <p class="muted">앱을 선택하면 서버에 접속 판정을 한 번 요청합니다. 실패해도 자동으로 다시 시도하지 않습니다.</p>
-            <div id="apps" aria-live="polite"></div>
-          </section>
-          <section class="card provided" aria-labelledby="access-title">
-            <h2 id="access-title">판정 결과 <span class="tag">제공</span></h2>
-            <div id="access-result" data-testid="access-result" data-decision="none" aria-live="polite">
-              <p class="muted">아직 요청한 앱이 없습니다.</p>
-            </div>
+        <p class="notice">업무 서비스에 접속하지 못할 때 이용 가능 여부와 거부 이유를 확인하세요. 실제 업무 사이트를 여는 기능은 아닙니다.</p>
+        <div id="subview-apps-choose" data-subpanel-view="apps" data-subpanel="choose" role="tabpanel" aria-labelledby="subtab-apps-choose" tabindex="0">
+          <div class="grid-2">
+            <section class="card provided" aria-labelledby="apps-title">
+              <h2 id="apps-title">업무 앱 이용 가능 여부</h2>
+              <p class="feature-note">버튼을 누르면 판정을 한 번 요청합니다. 업무 사이트는 열리지 않습니다.</p>
+              <div id="apps" aria-live="polite"></div>
+              <details class="feature-help">
+                <summary>언제 사용하나요?</summary>
+                <p>업무 서비스에 접속하지 못하거나 조직에서 접근 상태 확인을 안내했을 때 사용하세요. 직접 접속이 잘 되고 조직의 별도 지침이 없다면 반드시 이 탭을 거칠 필요는 없습니다.</p>
+                <p>실제 판정에는 조직 연결과 권한이 필요합니다. 허용 판정은 실제 서비스 연결 완료가 아니며, 실패해도 자동으로 다시 시도하지 않습니다.</p>
+              </details>
+            </section>
+            <section class="card provided" aria-labelledby="access-title">
+              <h2 id="access-title">확인 결과</h2>
+              <div id="access-result" data-testid="access-result" data-decision="none" aria-live="polite">
+                <p class="muted">아직 확인한 앱이 없습니다. 목록에서 이용 가능 여부를 확인하세요.</p>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div id="subview-apps-decision" data-subpanel-view="apps" data-subpanel="decision" role="tabpanel" aria-labelledby="subtab-apps-decision" tabindex="0" hidden>
+          <section class="card student" aria-labelledby="student-decision-title">
+            <h2 id="student-decision-title">판정 상세</h2>
+            <div id="student-decision" class="student-slot" aria-live="polite"></div>
           </section>
         </div>
-        <section class="card student" aria-labelledby="student-decision-title">
-          <h2 id="student-decision-title">학생 구현 표시 <span class="tag tag-student">student/extension.mjs · renderDecision</span></h2>
-          <div id="student-decision" class="student-slot" aria-live="polite"></div>
-        </section>
       </section>
 
       <section id="view-records" class="view" role="tabpanel" aria-labelledby="tab-records" hidden>
         <h1>보안 기록</h1>
         <p class="notice">받아 온 접속·보안 알림의 내용과 이전 조회 이력을 확인합니다. 기록 건수만으로 공격 여부를 판단할 수 없으며, 과거 기록은 현재 상태가 아닙니다. 기록 조회나 AI 설명만으로 조치가 실행되지는 않습니다.</p>
         <section class="card provided" aria-labelledby="records-title">
-          <h2 id="records-title">접속·XDR 기록 <span class="tag">제공</span></h2>
+          <h2 id="records-title" tabindex="-1" class="section-anchor">접속·XDR 기록</h2>
           <p class="muted">AI 설명은 기록 식별자만 보내며, 실패해도 기록은 그대로 유지됩니다. 조치는 원천 권한 확인과 별도의 사람 확인을 거칩니다.</p>
           <div id="records" aria-live="polite">
             <ul id="records-list" data-testid="records-list" class="records"></ul>
           </div>
         </section>
         <section class="card student" aria-labelledby="student-events-title">
-          <h2 id="student-events-title">이번에 받은 보안 기록 <span class="tag tag-student">student/extension.mjs · renderEvents</span></h2>
+          <h2 id="student-events-title">이번에 받은 보안 기록</h2>
           <div id="student-events" class="student-slot" aria-live="polite"></div>
         </section>
         <section class="card student" aria-labelledby="history-title">
-          <h2 id="history-title">내가 조회한 이력</h2>
+          <h2 id="history-title" tabindex="-1" class="section-anchor">내가 조회한 이력</h2>
           <div id="query-history"></div>
         </section>
         <section class="card student" aria-labelledby="student-explanation-title">
           <img class="alekov-art art-explain" src="/assets/alekov/alekov-ai-explain.webp" alt="" aria-hidden="true" draggable="false">
-          <h2 id="student-explanation-title">학생 AI 사건 설명 <span class="tag tag-student">student/extension.mjs · renderExplanation</span></h2>
+          <h2 id="student-explanation-title" tabindex="-1" class="section-anchor">AI 사건 설명</h2>
           <p class="muted">선택한 사건의 근거·규칙·현재 상태와 설명 결과를 함께 확인합니다. 조치 제안은 실행되지 않습니다.</p>
           <button type="button" id="ai-explanation-cancel" class="btn" disabled>AI 설명 취소</button>
           <div id="student-explanation" class="student-slot" aria-live="polite"></div>
         </section>
         <section class="card provided" aria-labelledby="action-title">
-          <h2 id="action-title">조치 준비와 원천 결과 <span class="tag">제공</span></h2>
+          <h2 id="action-title" tabindex="-1" class="section-anchor">조치 준비와 원천 결과</h2>
           <p class="muted">현재 선택한 사건의 AI 제안에서 조치를 직접 준비합니다. 사건·실제 대상·확인 기한을 읽은 뒤 사람 확인 버튼을 누르세요. ACK·취소·시간 초과는 효과 없음이나 완료가 아닙니다.</p>
           <div id="action-result" data-state="idle" aria-live="polite"></div>
           <div class="row">
@@ -249,15 +296,29 @@
           </div>
         </section>
         <section class="card student" aria-labelledby="student-action-title">
-          <h2 id="student-action-title">학생 조치 상태 표시 <span class="tag tag-student">student/extension.mjs · renderAction</span></h2>
+          <h2 id="student-action-title" tabindex="-1" class="section-anchor">조치 상태</h2>
           <div id="student-action" class="student-slot" aria-live="polite"></div>
+        </section>
+        <section class="card" aria-labelledby="wazuh-incidents-title">
+          <h2 id="wazuh-incidents-title" tabindex="-1" class="section-anchor">Wazuh 사건</h2>
+          <button type="button" class="btn" id="wazuh-refresh">사건 새로고침</button>
+          <p id="wazuh-status" role="status"></p>
+          <ul id="wazuh-incidents" aria-label="사건 목록"></ul>
+          <div id="wazuh-detail" aria-label="선택한 사건"></div>
         </section>
       </section>
       <section id="view-guide" class="view" role="tabpanel" aria-labelledby="tab-guide" hidden>
         <h1>사용 안내</h1>
         <div id="student-guide" class="card student"></div>
+        <div id="subview-guide-availability" data-subpanel-view="guide" data-subpanel="availability" role="tabpanel" aria-labelledby="subtab-guide-availability" tabindex="0" hidden>
+          <section class="card" aria-labelledby="availability-title">
+            <h2 id="availability-title">현재 이용 범위</h2>
+            <div id="availability" aria-live="polite"></div>
+          </section>
+        </div>
       </section>
     </main>
   </div>
+  <div id="onboarding-host"></div>
 </body>
 </html>

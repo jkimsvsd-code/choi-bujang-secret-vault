@@ -1,0 +1,7 @@
+<decoder name="cxdr-network">
+  <program_name type="pcre2">^cxdr-fw$</program_name>
+</decoder>
+<decoder name="cxdr-network-json">
+  <parent>cxdr-network</parent>
+  <plugin_decoder offset="after_parent">JSON_Decoder</plugin_decoder>
+</decoder>

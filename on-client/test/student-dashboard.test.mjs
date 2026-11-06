@@ -30,6 +30,16 @@ test('three native keyboard buttons, safe waiting and failed item guidance witho
   assert.match(root.textContent,/기기 조회 실패/);assert.match(root.textContent,/다시 조회하세요/);assert.doesNotMatch(root.textContent,/예제 자료/);
   assert.equal(controls[0].attrs['aria-disabled'],undefined);
 });
+
+test('business service failures point to SDP instead of repeating account or AI approval',async()=>{
+  for(const code of ['ENGINE_NOT_CONNECTED','SUBJECT_SCOPE_UNVERIFIED']){
+    const {root}=setup({get:async()=>({ok:false,error:{code}})});
+    await buttons(root)[0].listeners.click();
+    assert.match(root.textContent,/업무 서비스/);
+    assert.match(root.textContent,/SDP/);
+    assert.doesNotMatch(root.textContent,/로컬 앱 실행·계정 연결을 확인|계정 연결을 다시|「AI 연결 시작」|예제 자료/);
+  }
+});
 test('malformed response fails visibly; demo data is explicitly identified',async()=>{
   const {root}=setup({get:async()=>({ok:true,meta:{mode:'demo',checkedAt:'2026-10-27T00:00:00Z'},data:{}})});
   await buttons(root)[1].listeners.click();
@@ -47,7 +57,7 @@ test('timeline preserves event-time ordering and native kind filter',async()=>{
   await buttons(root)[1].listeners.click();
   const select=walk(root).find(n=>n.tagName==='select');select.value='전체';select.listeners.change();
   assert.ok(root.textContent.indexOf('newer')<root.textContent.indexOf('older'));
-  select.value='access';select.listeners.change();const timeline=walk(root).find(n=>n.attrs['aria-label']==='학생 핵심 보안 기록 타임라인');assert.doesNotMatch(timeline.textContent,/newer/);assert.match(timeline.textContent,/older/);
+  select.value='access';select.listeners.change();const timeline=walk(root).find(n=>n.attrs['aria-label']==='내 보안 현황 보안 기록 타임라인');assert.doesNotMatch(timeline.textContent,/newer/);assert.match(timeline.textContent,/older/);
 });
 
 test('cards expose source, summary and time while detail stays collapsed after refresh',async()=>{
@@ -81,7 +91,7 @@ test('first-use guidance and target labels survive waiting, completion, failure 
   assert.deepEqual(controls.map(b=>b.attrs['aria-label']),labels);
   assert.match(view.renderGuide().textContent,/케셰브vJ는 내 PC 상태와 연결된 서비스의 보안 기록을 확인하는 앱/);
   assert.match(view.renderGuide().textContent,/처음이라면 ‘내 PC 상태 측정’/);
-  assert.match(view.renderGuide().textContent,/예제 기록과 SDP 연결 상태는 별도/);
+  assert.match(view.renderGuide().textContent,/PC 조회 성공이 SDP 연결 성공을 뜻하지 않습니다/);
   const success=controls[1].listeners.click();await Promise.resolve();
   assert.equal(controls[1].textContent,'보안 기록 조회 중…');
   finish({ok:true,meta:{mode:'demo'},data:[]});await success;
@@ -179,12 +189,13 @@ test('start only requests navigation, Escape does not, and guide has ordered sec
 });
 
 
-test('renamed guide includes collapsed feature instructions for every tab',()=>{
+test('guide has three role cards and visible anchored feature sections',()=>{
   const guide=createStudentView().renderGuide();
   assert.match(guide.textContent,/케셰브vJ/);
-  const details=walk(guide).filter(n=>n.tagName==='details');assert.equal(details.length,4);
-  assert.ok(details.every(n=>n.open===false));
-  for(const term of ['PC 측정·추이·이력','SDP 연결 상태','패키지·취약점','계정·AI 연결','접속 요청과 판정','내가 조회한 이력','AI 사건 설명','조치 준비·확인·결과','첫 팝업과 키보드'])assert.ok(guide.textContent.includes(term));
+  const cards=walk(guide).filter(n=>n.className==='guide-role-card');assert.equal(cards.length,3);
+  assert.deepEqual(walk(guide).filter(n=>n.className==='section-anchor').map(n=>n.id),['guide-features-protection','guide-features-apps','guide-features-records']);
+  assert.doesNotMatch(guide.textContent,/사용 안내 · 세부 기능/);
+  for(const term of ['PC 측정·추이·이력','SDP 연결 상태','패키지·취약점','계정·AI 연결','접속 요청과 판정','내가 조회한 이력','AI 사건 설명','조치 준비·확인·결과'])assert.ok(guide.textContent.includes(term));
   assert.match(guide.textContent,/PC가 느리거나/);
 });
 
@@ -192,4 +203,20 @@ test('renamed guide includes collapsed feature instructions for every tab',()=>{
 test('beginner guide explains benefits without claiming mandatory routing or automatic fixes',()=>{
   const text=createStudentView().renderGuide().textContent;
   for(const phrase of ['PC가 느릴 때','업무 앱에 접속하지 못할 때','반드시 이 탭을 거칠 필요는 없습니다','항상 더 안전해지거나','백신이나 자동 수리 도구는 아닙니다','세션은 서버가 관리하는 로그인 상태','소프트웨어 부품(패키지)','보안 약점(취약점)','담당자에게 문의'])assert.ok(text.includes(phrase),phrase);
+});
+
+
+test('actual guide, popup and failure explanations omit demo copy; demo guidance stays explicit',async()=>{
+  const actual=setup({displayMode:'actual',get:async()=>({ok:true,meta:{mode:'connected'},data:{}})});
+  assert.doesNotMatch(actual.view.renderGuide().textContent,/예제|데모|demo/i);
+  assert.doesNotMatch(actual.root.textContent,/예제|데모|demo/i);
+  const popup=walk(actual.root).find(node=>node.tagName==='dialog');
+  assert.match(popup.style.boxShadow,/0 24px 80px/);
+  await buttons(actual.root)[1].listeners.click();
+  assert.match(actual.root.textContent,/응답 형식 확인 불가/);
+  assert.doesNotMatch(actual.root.textContent,/예제|데모|demo/i);
+  const demo=setup({displayMode:'demo'});
+  assert.match(demo.view.renderGuide().textContent,/설명용|가상 자료/);
+  assert.match(walk(demo.root).find(node=>node.tagName==='dialog').textContent,/데모 모드.*설명용 예제/);
+  assert.match(demo.view.renderGuide().textContent,/실제 PC 조회나 연결·조치는 실행하지 않습니다/);
 });
