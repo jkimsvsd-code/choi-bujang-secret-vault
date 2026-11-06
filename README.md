@@ -2,9 +2,25 @@
 
 ## Windows 배포 및 Wazuh 연동 (2026-11-06)
 
+[Setup.exe 0.2.15 다운로드](https://github.com/jkimsvsd-code/choi-bujang-secret-vault/releases/download/v0.2.15/Setup.exe) · [설치 방법과 미검증 범위](https://github.com/jkimsvsd-code/choi-bujang-secret-vault/releases/tag/v0.2.15) · [케셰브 시연 화면 문서](docs/screenshots/kesev-2026-11-06/README.md)
+
 Windows 10 22H2/11 x64 설치형 배포는 [빌드·실행 안내](package/windows/README.md)를 참고하세요. 시작 메뉴의 Kesev를 열고 **보안 기록 → Wazuh 사건**에서 사건 조회, 승인·반려, 모의 대응 결과와 감사 이력을 확인합니다. 사용자별 데이터는 종료 후에도 유지됩니다. 이미 처리한 후보의 재처리는 거부됩니다.
 
 [시연 화면](docs/screenshots/kesev-2026-11-06/README.md)과 [실제 syslog 연동·미검증 범위](xdr/cloudxdr/README.md)를 함께 기록했습니다. 네트워크 업그레이드 중이므로 실제 장비 시험은 보류합니다.
+
+### version/user-v1에서 진행한 사항
+
+`version/user-v1`의 기존 화면과 XDR 기능을 유지하며 아래 작업을 진행했고, `main`에 병합했습니다(구현 커밋 `8168666`, 병합 커밋 `c018842`).
+
+- **보안 기록 통합:** 별도 CloudXDR 메뉴 대신 기존 보안 기록에서 Wazuh 사건 조회, 차단 후보 승인·반려, 모의 대응 결과와 감사 이력을 확인합니다. 실제 방화벽 차단은 실행하지 않습니다.
+- **수신·분석:** Wazuh 로그인 실패 경보를 사건으로 집계하고, UDP syslog 직접 수신과 Cisco IOS 상태 변경·pfSense IPv4 TCP/UDP filterlog 파서를 구현했습니다. 동일 이벤트의 직접 수신과 Manager 전달 경로를 함께 표시합니다.
+- **화면 수정:** 구형 Edge에서 예제 모드를 끈 뒤 표시가 남던 호환성 문제를 수정했습니다.
+- **Windows 배포:** Windows 10 22H2/11 x64용 Setup.exe 0.2.15를 빌드했습니다. Node.js 번들, 시작 메뉴, 제거 기능과 사용자별 사건·감사 이력 저장을 포함합니다. 개발 데이터·비밀번호·토큰·SSH 개인키는 배포물에서 제외했습니다.
+- **이전 실습:** Windows 10 VM의 이전 설치본 실행·승인·반려·기록 유지·제거, 실제 Wazuh 로그인 실패 수신 및 SW-SOC 로그의 양쪽 수신을 확인했습니다. VM의 앱·SSH 터널 자동 시작도 구성했으나 VM별 키·작업·방화벽 설정은 설치 파일에 포함하지 않습니다.
+- **이번 빌드 확인:** 앱 파일 74개와 실행기의 소스 해시 일치, 로컬 회귀 검사 51개 통과. 새 0.2.15 설치 파일의 VM 재검증과 Windows 11 새 환경 검증은 미완료입니다.
+- **보류 사항:** 네트워크 이중화 업그레이드 후 실제 연동을 재시험합니다. pfSense 실제 로그의 양쪽 수신부터 보안 기록·감사 이력까지의 검증은 아직 완료하지 않았습니다.
+
+**시연 문서 경로:** [`docs/screenshots/kesev-2026-11-06/README.md`](docs/screenshots/kesev-2026-11-06/README.md). 실제 Wazuh 로그인 실패 화면과 JSON UDP 시연 화면을 구분해 설명했습니다.
 
 케셰브vJ는 로컬 PC에서 실행하는 보안 Agent 학습 앱입니다. 학생 영역의 기기·세션, 보안 기록, 패키지 조회와 추가한 PC 상태·Windows 기록 조회를 제공합니다. 이 저장소에는 기존 가상 메모 자료실 프로젝트도 함께 들어 있습니다.
 
