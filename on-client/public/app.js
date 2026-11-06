@@ -1,3 +1,4 @@
+import { cloneData } from './browser-compat.mjs';
 import { createDisplayMode } from '/demo-data.mjs';
 import { renderAvailability } from '/availability-view.mjs';
 import {createPcInspectionView, createSdpStatusView} from '/pc-inspection-view.mjs';
@@ -147,7 +148,7 @@ function validExplanation(data, event) {
   const proposalsOk = x.proposals.every((p) => exactFields(p, ['action', 'evidenceIds', 'reason']) && safeAiId(p.action) && event.supportedActions.includes(p.action)
     && refs(p.evidenceIds) && safeAiText(p.reason, 500));
   if (!proposalsOk || x.requiresHumanConfirmation !== true || x.executed !== false) return null;
-  return structuredClone(x);
+  return cloneData(x);
 }
 
 function safeEventForAi(event) {
@@ -167,7 +168,7 @@ function validAiCheck(data, meta) {
     || help.component !== 'on-ai' || typeof help.appCredentialsConfigured !== 'boolean' || help.automaticRetries !== 0 || help.workbenchRequiredAtRuntime !== false) return null;
   if (data.audienceAuthorization === 'test' && (help.code !== 'ON_AI_TEST_TRANSPORT_ONLY' || help.provisioning !== 'pending')) return null;
   if (data.audienceAuthorization === 'verified' && (help.code !== 'ON_AI_APP_AUTHORIZATION_VERIFIED' || help.provisioning !== 'verified')) return null;
-  return structuredClone(data);
+  return cloneData(data);
 }
 
 const AI_MESSAGES = Object.freeze({
@@ -580,7 +581,7 @@ function markSectionLinks(){
     if(group.hidden)continue;
     const links=[...group.querySelectorAll('[data-section-link]')];
     const targets=links.map(link=>({link,target:$(link.getAttribute('href').slice(1))})).filter(x=>x.target&&x.target.getClientRects().length);
-    const current=targets.filter(x=>x.target.getBoundingClientRect().top<=headerHeight()+Math.min(180,window.innerHeight/3)).at(-1)||targets[0];
+    const current=targets.filter(x=>x.target.getBoundingClientRect().top<=headerHeight()+Math.min(180,window.innerHeight/3)).slice(-1)[0]||targets[0];
     for(const link of links){if(link===current?.link)link.setAttribute('aria-current','location');else link.removeAttribute('aria-current');}
   }
 }
@@ -1190,7 +1191,7 @@ async function requestExplain(event, button) {
   const controller = new AbortController();
   explainControllers.set(event.id, controller);
   button.disabled = true;
-  const safeEvent = safeEventForAi(event) ? structuredClone(event) : null;
+  const safeEvent = safeEventForAi(event) ? cloneData(event) : null;
   state.selectedExplanation = { event: safeEvent, resource: { status: 'loading' } };
   renderStudent('explanation');
   $('ai-explanation-cancel').disabled = false;
@@ -1298,7 +1299,7 @@ function safeActionData(data,phase,intent) {
   if(data.status==='succeeded'&&(data.observation?.effectApplied!==true||phase==='prepare'))return null;
   if(phase==='execute'&&data.status==='succeeded'&&data.replayed!==true)return null;
   if(data.superseded!==undefined&&(data.superseded!==true||data.status!=='unknown'||data.observation!==undefined))return null;
-  const {confirmationId,...safe}=structuredClone(data);
+  const {confirmationId,...safe}=cloneData(data);
   return {safe,confirmationId};
 }
 function clearAction({cancelled=false}={}) {
@@ -1338,7 +1339,7 @@ async function prepareAction(event,actionId) {
   const current=state.selectedExplanation;
   if(current.event?.id!==event.id||current.resource.status!=='ok'||!current.resource.data.proposals.some(p=>p.action===actionId)||!event.supportedActions.includes(actionId))return;
   clearAction();const gen=actionGeneration,refreshGen=generation,controller=new AbortController();actionController=controller;
-  actionState={status:'loading',event:structuredClone(current.event),actionId,target:null,receipt:null,observation:null,message:'조치 준비 중 · 미실행'};renderAction();
+  actionState={status:'loading',event:cloneData(current.event),actionId,target:null,receipt:null,observation:null,message:'조치 준비 중 · 미실행'};renderAction();
   const result=await aiRequest('/api/actions/prepare',{body:{eventId:event.id,actionId},signal:controller.signal});
   if(gen!==actionGeneration||refreshGen!==generation||controller.signal.aborted)return;
   actionController=null;
@@ -1346,7 +1347,7 @@ async function prepareAction(event,actionId) {
   if(!value){actionFailure(result,false);renderAction();return;}
   actionTicket=value.confirmationId;
   actionIntent=Object.freeze({requestId:value.safe.requestId,receiptId:value.safe.receiptId,eventId:event.id,actionId,target:Object.freeze({...value.safe.target})});
-  actionState={...actionState,status:'prepared',target:structuredClone(value.safe.target),receipt:value.safe,confirmationExpiresAt:value.safe.confirmationExpiresAt};
+  actionState={...actionState,status:'prepared',target:cloneData(value.safe.target),receipt:value.safe,confirmationExpiresAt:value.safe.confirmationExpiresAt};
   actionExpiryTimer=setTimeout(()=>{if(gen!==actionGeneration)return;actionTicket=null;actionState={...actionState,status:'expired',error:{code:'ACTION_CONFIRMATION_EXPIRED',message:ACTION_MESSAGES.ACTION_CONFIRMATION_EXPIRED}};renderAction();},Math.min(2147483647,Date.parse(value.safe.confirmationExpiresAt)-Date.now()));
   renderAction();
 }
@@ -1375,7 +1376,7 @@ function snapshot(resource) {
   if (resource.status === 'ok') base.data = resource.data;
   if (resource.status === 'error') base.error = { code: resource.error.code, message: resource.error.message };
   try {
-    return structuredClone(base);
+    return cloneData(base);
   } catch {
     return { status: base.status, mode: base.mode };
   }
@@ -1384,9 +1385,9 @@ function snapshot(resource) {
 // identity의 세 자료는 같은 세대의 응답만 담긴다(다시 불러오기 시 셋 모두 loading으로 초기화).
 function studentData(kind) {
   if(kind==='guide')return {};
-  if(kind==='action')return structuredClone({...actionState,mode:display.mode==='demo'?'demo':'connected'});
+  if(kind==='action')return cloneData({...actionState,mode:display.mode==='demo'?'demo':'connected'});
   if (kind === 'aiConnection') return { ...snapshot(state.aiConnection), checkedAt: state.aiConnection.meta?.checkedAt ?? null, explanationAccepted: false };
-  if (kind === 'explanation') return structuredClone({ event: state.selectedExplanation.event, explanation: snapshot(state.selectedExplanation.resource), checkedAt: state.selectedExplanation.resource.meta?.checkedAt ?? null });
+  if (kind === 'explanation') return cloneData({ event: state.selectedExplanation.event, explanation: snapshot(state.selectedExplanation.resource), checkedAt: state.selectedExplanation.resource.meta?.checkedAt ?? null });
   if (kind === 'vulnerabilities') return snapshot(state.vulnerabilities);
   if (kind === 'identity') return { me: snapshot(state.me), devices: snapshot(state.devices), sessions: snapshot(state.sessions) };
   if (kind === 'decision') {
@@ -1404,7 +1405,7 @@ function studentData(kind) {
     if (state.events.status === 'ok') for (const event of state.events.data) {
       if (event.kind === 'xdr' || Object.values(event.state).includes('unknown')) notifications.push({ resource: 'events', code: event.kind, message: `${event.id}: ${event.summary}` });
     }
-    return structuredClone({ devices: snapshot(state.devices), sessions: snapshot(state.sessions), notifications, diagnostics: snapshot(state.diagnostics), mode: currentMode() });
+    return cloneData({ devices: snapshot(state.devices), sessions: snapshot(state.sessions), notifications, diagnostics: snapshot(state.diagnostics), mode: currentMode() });
   }
   return snapshot(state.events);
 }

@@ -1,7 +1,7 @@
 const labels = {
   pending:'검토 대기', simulated:'모의 차단 완료', rejected:'반려', expired:'만료',
   incident_created:'사건 생성', alert_received:'경보 접수', candidate_created:'차단 후보 생성',
-  candidate_expired:'후보 만료', approved:'승인', simulation_succeeded:'모의 대응 완료'
+  candidate_expired:'후보 만료', approved:'승인', simulation_succeeded:'모의 대응 완료', network_analyzed:'네트워크 분석', device_analyzed:'장비 이벤트 분석'
 };
 const time = ms => new Date(ms).toLocaleString('ko-KR');
 
@@ -55,8 +55,27 @@ export function createWazuhIncidentsView() {
   async function loadDetail() {
     detail.replaceChildren();
     const row = await request('/incidents/' + selected);
-    append(detail, 'h3', row.ip + ' 로그인 실패');
+    append(detail, 'h3', row.ip + (row.kind === 'device' ? ' 장비 이벤트' : row.kind === 'network' ? ' 네트워크 통신' : ' 로그인 실패'));
     append(detail, 'p', '경보 ' + row.hits + '건 · 최초 ' + time(row.opened));
+    if (row.observations?.length) {
+      append(detail, 'h4', '수신 경로와 통신 상대');
+      append(detail, 'p', '동일 이벤트 ID는 같은 로그의 관측입니다. UDP 직접 수신과 Manager 경보를 각각 표시합니다.');
+      const evidence = append(detail, 'ul', '');
+      for (const item of row.observations) {
+        if (item.kind === 'device') {
+          append(evidence, 'li', item.source + ' · ' + item.vendor + ' ' + item.deviceIp + ' · ' +
+            item.eventCode + ' · ' + item.summary + ' · ID ' + item.eventId);
+          continue;
+        }
+        append(evidence, 'li', item.source + ' · ' + item.protocol + ' ' + item.srcip + ':' + item.srcport +
+          ' → ' + item.dstip + ':' + item.dstport + ' · ' + item.action +
+          (item.vendor ? ' · 장비 ' + item.vendor + ' ' + item.deviceIp : '') + ' · ID ' + item.eventId);
+      }
+      const blocked = row.observations.some(item => ['deny','drop'].includes(item.action));
+      const analysis = row.kind === 'device' ? '장비의 구성 또는 인터페이스 상태 변경을 관측했습니다.' :
+        blocked ? '방화벽 차단 기록을 관측했습니다. 공격 여부는 추가 근거 확인이 필요합니다.' : '통신 허용 기록을 관측했습니다.';
+      append(detail, 'p', '분석 결과 · ' + analysis);
+    }
     append(detail, 'h4', '차단 후보');
     const candidate = row.candidate;
     if (candidate) {
@@ -93,7 +112,7 @@ export function createWazuhIncidentsView() {
     if (!selected) return '접수된 Wazuh 사건이 없습니다.';
     for (const row of rows) {
       const item = append(list, 'li', '');
-      const control = button(item, row.ip + ' · 경보 ' + row.hits + '건', async () => {
+      const control = button(item, row.ip + (row.kind === 'device' ? ' · 장비 이벤트 ' : row.kind === 'network' ? ' · 네트워크 관측 ' : ' · 로그인 경보 ') + row.hits + '건', async () => {
         selected = row.id;
         for (const choice of list.querySelectorAll('button')) {
           choice.setAttribute('aria-pressed', String(choice === control));

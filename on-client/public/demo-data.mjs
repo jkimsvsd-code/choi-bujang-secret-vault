@@ -1,5 +1,6 @@
+import { cloneData } from './browser-compat.mjs';
 // Fictional, browser-memory-only fixtures. No network, credentials or PC reads.
-const copy = value => structuredClone(value);
+const copy = value => cloneData(value);
 const failure = (code, message) => ({ ok: false, error: { code, message, retryable: false }, meta: { mode: 'disconnected', checkedAt: null } });
 const cancelled = () => failure('CANCELLED', '모드가 바뀌었거나 요청을 취소했습니다. 현재 모드에서 다시 조회하세요.');
 
@@ -75,7 +76,7 @@ export function createDemoData({ clock = () => new Date() } = {}) {
         if (!action || body.requestId !== action.requestId || action.status === 'prepared') return failure('ACTION_EVENT_UNAVAILABLE', '확인한 예제 조치가 없습니다.');
         action = { ...action, status: 'succeeded', version: 3, observation: { observedAt: now(), effectApplied: true } }; return ok(action);
       default:
-        if (method === 'POST' && /^\/api\/(native-login|ai\/connect)\/(start|current|status|redeem|finish|cancel)$/.test(path)) return ok({ example: true, step: path.split('/').at(-1), checkedAt: now() });
+        if (method === 'POST' && /^\/api\/(native-login|ai\/connect)\/(start|current|status|redeem|finish|cancel)$/.test(path)) return ok({ example: true, step: path.split('/').pop(), checkedAt: now() });
         return failure('DEMO_UNSUPPORTED', '이 기능의 예제는 준비되지 않았습니다. 실제 조회로 대신 실행하지 않습니다.');
     }
   };

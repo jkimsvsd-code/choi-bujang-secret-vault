@@ -13,18 +13,27 @@ def forward(path):
         alert = json.load(alert_file)
     data = alert.get("data", {})
     rule = alert.get("rule", {})
-    if not data.get("srcip"):
-        return
-    payload = {
-        "id": alert["id"],
-        "manager": {"name": alert["manager"]["name"]},
-        "data": {key: data[key] for key in ("srcip", "count") if key in data},
-        "rule": {key: rule[key] for key in ("groups", "description", "level") if key in rule},
-    }
+    location = alert.get("location", "")
+    native = isinstance(location, str) and location in ("10.30.0.33", "10.20.99.33", "10.20.99.1")
+    if native and isinstance(alert.get("full_log"), str):
+        payload = {
+            "id": alert["id"],
+            "manager": {"name": alert["manager"]["name"]},
+            "native_syslog": {"text": alert["full_log"], "peer": location},
+        }
+    else:
+        if not data.get("srcip"):
+            return
+        payload = {
+            "id": alert["id"],
+            "manager": {"name": alert["manager"]["name"]},
+            "data": {key: data[key] for key in ("srcip", "count", "dstip", "srcport", "dstport", "protocol", "action", "event_id", "kesev_kind") if key in data},
+            "rule": {key: rule[key] for key in ("groups", "description", "level") if key in rule},
+        }
     request = Request(
         ENDPOINT,
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "Host": "127.0.0.1:8787"},
         method="POST",
     )
     opener = build_opener(ProxyHandler({}))

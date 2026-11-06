@@ -29,6 +29,7 @@ const record=value=>value!==null&&typeof value==='object'&&!Array.isArray(value)
 const text=value=>typeof value==='string'&&value.length<=2000;
 const files=new Map([['/','public/index.html'],['/index.html','public/index.html'],['/app.js','public/app.js'],['/style.css','public/style.css'],['/vulnerabilities-view.mjs','public/vulnerabilities-view.mjs'],['/student/extension.mjs','student/extension.mjs'],
   ['/wazuh-incidents-view.mjs','public/wazuh-incidents-view.mjs'],
+  ['/browser-compat.mjs','public/browser-compat.mjs'],
   ['/ai-connect.mjs','public/ai-connect.mjs'],
   ...['alekov-ai-explain','alekov-app-icon','alekov-connect-approval','alekov-connection-unknown','alekov-empty-records'].map(name=>[`/assets/alekov/${name}.webp`,`public/assets/alekov/${name}.webp`])]);
 const connectionRoutes=new Map(['start','finish','status','cancel'].map(kind=>[`/api/ai/connect/${kind}`,kind]));

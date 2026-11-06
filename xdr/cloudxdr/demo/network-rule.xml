@@ -1,0 +1,7 @@
+<group name="kesev_network,">
+  <rule id="110510" level="5">
+    <decoded_as>cxdr-network</decoded_as>
+    <field name="kesev_kind">^network$</field>
+    <description>Kesev network log: $(protocol) $(action) $(srcip) to $(dstip)</description>
+  </rule>
+</group>
